@@ -130,3 +130,4 @@ Realtime Database Rules
 Realtime Database
   └─ tasks / history / milestones などを保存
 ```
+GitHub Pages deployment enabled.
