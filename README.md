@@ -1,112 +1,132 @@
-# Alius-Terra Task Board セットアップ
+# Alius-Terra Task Board セットアップ / 運用メモ
 
-このフォルダは、元の共同開発用タスク工程表を Alius-Terra 用に分離したものです。
+このリポジトリは、Alius-Terra 開発用の共同タスク工程表です。
 
-## 1. メンバー名を設定
+## 現在の構成
 
-`index.html` の `APP_CONFIG` を編集します。
+- Webアプリ: `index.html`
+- 公開: GitHub Pages
+- ログイン: Firebase Authentication（Google）
+- データ保存: Firebase Realtime Database
+- Database Path: `aliusTerraBoard`
+- 担当者: `きむち / しぶ / いつ / いちご`
 
-```js
-const APP_CONFIG = {
-  projectTitle: 'Alius-Terra｜開発工程表',
-  projectSubtitle: 'アリウステラ 共同編集ボード／タスクを右クリックすると詳細を編集できます',
-  members: ['きむち', 'しぶ', 'いつ', 'いちご'],
-  databasePath: 'aliusTerraBoard',
-};
+GoogleアカウントでFirebase Authenticationにログインできたユーザーは、タスクボードを利用できます。
+タスク上の「担当者」はGoogleアカウントとは別で、ボード内の固定メンバー名から選択します。
+
+---
+
+## 1. Firebase Authentication
+
+Firebase Consoleで次を設定します。
+
+1. Alius-Terra用Firebaseプロジェクトを開く
+2. `Authentication`
+3. `Sign-in method`
+4. `Google`
+5. `Enable` をON
+6. `Save`
+
+GitHub Pages公開後は、Authenticationの `Settings` → `Authorized domains` にGitHub Pagesのドメインを追加します。
+
+例:
+
+```text
+GitHub Pages URL
+https://example.github.io/AliusTerra-TaskBoard/
+
+Authorized domainsへ追加
+example.github.io
 ```
 
-この配列に、タスクボードを利用するメンバー名を設定します。
+URL全体ではなく、ドメイン部分だけを登録します。
 
-## 2. Alius-Terra 専用 Firebase プロジェクトを作る
+---
 
-1. Firebase Console で新規プロジェクトを作成。
-2. Realtime Database を作成。
-3. Web アプリを追加。
-4. 表示された `firebaseConfig` の値を `index.html` の `FIREBASE_CONFIG` に貼り付け。
+## 2. Realtime Database Rules
 
-このHTMLは Firebase Realtime Database の `aliusTerraBoard` 配下だけを使用します。
-
-### 初回動作確認用ルール
-
-まず3人で接続確認をするだけなら、Realtime Database の Rules を次のようにできます。
+Authentication動作確認後、Realtime Database → `Rules` を次のように設定します。
 
 ```json
 {
   "rules": {
     "aliusTerraBoard": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
 ```
 
-**注意:** このルールはURLを知っている第三者からの読み書きも許可します。動作確認後は Firebase Authentication を導入して認証済みメンバーだけに制限するのがおすすめです。
+これにより、未ログインユーザーは `aliusTerraBoard` の読み書きができません。
 
-## 3. Firebase 設定を貼り付ける
+---
 
-`index.html` の下記部分を自分のプロジェクト値で置き換えます。
+## 3. GitHub Pages
 
-```js
-const FIREBASE_CONFIG = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-  databaseURL: 'https://YOUR_DATABASE_NAME.REGION.firebasedatabase.app',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId: 'YOUR_APP_ID',
-};
-```
+GitHub上で:
 
-Firebase の Web 用 config 自体はブラウザアプリから見える前提の識別情報です。データ保護は Realtime Database Rules / Authentication / App Check で行います。
+1. `AliusTerra-TaskBoard` リポジトリを開く
+2. `Settings`
+3. `Pages`
+4. `Build and deployment`
+5. Source: `Deploy from a branch`
+6. Branch: `main`
+7. Folder: `/(root)`
+8. `Save`
 
-## 4. ローカルで確認
+公開後に表示されるURLをメンバーへ共有します。
 
-VS Code でこのフォルダを開き、Live Server 等のローカルHTTPサーバーで `index.html` を開きます。
+---
 
-Firebase接続後、別ブラウザまたは別端末から同じページを開き、片方で追加したタスクがもう片方にも反映されれば同期成功です。
+## 4. 初回動作確認
 
-## 5. GitHub に置く
+1. GitHub Pages URLをChromeで開く
+2. `Googleでログイン` を押す
+3. Googleアカウントを選択する
+4. 必要なら「あなたは誰ですか？」でボード上の担当者名を選ぶ
+5. 既存タスクが表示されることを確認
+6. 新しいタスクを1件追加
+7. Firebase Console → Realtime Database → Data で反映を確認
+8. 別ブラウザまたは別端末でも同じURLを開き、リアルタイム同期を確認
 
-おすすめ構成:
+---
+
+## 5. HTMLを変更したときの運用
+
+1. VS Codeで `index.html` を編集
+2. GitHub DesktopでDiff確認
+3. Unityとは無関係なので、タスクボード用リポジトリだけをCommit
+4. `Push origin`
+5. GitHub Pagesへ自動反映
+6. 公開URLで動作確認
+
+Firebase上のタスク追加・進捗変更・履歴追加はGitの変更にはなりません。
+GitHubはWebアプリ本体を管理し、Firebaseは共同編集データを管理します。
+
+---
+
+## 6. 役割の整理
 
 ```text
-AliusTerra/
-  TaskBoard/
-    index.html
-    README.md
+VS Code
+  └─ index.htmlを編集
+       ↓
+GitHub Desktop
+  └─ Commit / Push
+       ↓
+GitHub Repository
+  └─ Webアプリのソースコード
+       ↓
+GitHub Pages
+  └─ みんながアクセスするURL
+       ↓
+Firebase Authentication
+  └─ Googleログイン
+       ↓
+Realtime Database Rules
+  └─ ログイン済みか判定
+       ↓
+Realtime Database
+  └─ tasks / history / milestones などを保存
 ```
-
-既存の `AliusTerra` リポジトリで管理する場合は、この `TaskBoard` フォルダを追加して Commit / Push します。
-
-Unityプロジェクトのリポジトリ直下に置く場合も、HTMLはUnityの `Assets` 配下ではなく、Unityプロジェクト外の `TaskBoard` フォルダに置く方が整理しやすいです。
-
-## 6. GitHub Pages で共有URLを作る
-
-GitHub Pages を使うなら、Pages の公開元にできる場所へHTMLを置きます。簡単なのは専用リポジトリに `index.html` を置いて `/ (root)` から公開する方法です。
-
-既存の巨大なUnityリポジトリから Pages を公開するより、`AliusTerra-TaskBoard` のような小さな専用リポジトリに分離する方がおすすめです。タスクボードの更新履歴とゲーム本体の履歴も混ざりません。
-
-GitHub で:
-
-1. リポジトリ → Settings
-2. Pages
-3. Build and deployment → Source → Deploy from a branch
-4. Branch を `main`
-5. Folder を `/(root)`
-6. Save
-
-公開後に表示される GitHub Pages URL を3人で共有します。
-
-## 7. 運用上のおすすめ
-
-- ゲーム本体: `AliusTerra` リポジトリ
-- タスク工程表: `AliusTerra-TaskBoard` リポジトリ
-- データ: Alius-Terra 専用 Firebase Realtime Database
-
-この3つを分離すると、Unity本体・工程表Webアプリ・タスクデータの責務が混ざりません。
-
-## 8. 次にやると安全なこと
-
-初回同期が成功したら、Firebase Authentication を追加して3人だけが読み書きできるルールに変更してください。
