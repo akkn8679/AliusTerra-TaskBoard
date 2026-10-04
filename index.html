@@ -107,6 +107,27 @@
     background:#fff;border:1px solid var(--line);padding:7px 10px;
   }
 
+  .section-tabs{
+    display:flex;align-items:flex-end;border-bottom:1px solid var(--line-strong);
+    min-height:44px;
+  }
+  .section-tab{
+    min-width:138px;border:none;border-bottom:3px solid transparent;background:transparent;
+    color:var(--muted);font-family:'Noto Sans JP',sans-serif;font-size:14px;font-weight:700;
+    padding:11px 18px 10px;cursor:pointer;transition:.1s;
+  }
+  .section-tab:hover{background:var(--hover);color:var(--ink);}
+  .section-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:#fff;}
+  .sync-status{
+    margin:0 0 6px auto;padding:7px 11px;border:1px solid var(--line-strong);
+    background:#fff;color:var(--muted);font-size:11.5px;font-weight:700;
+  }
+  .sync-status.ready{border-color:#79b99d;background:#effaf5;color:#08784a;}
+  .workspace-view{display:none;}
+  .workspace-view.active{
+    display:flex;flex:1;min-height:0;flex-direction:column;gap:14px;
+  }
+
   /* ---------- board ---------- */
   .board{
     flex:1;display:flex;border:1px solid var(--line-strong);
@@ -388,6 +409,56 @@
   }
   .hrow .icon-del:hover{color:#c0574a;background:var(--hover);}
 
+  /* ---------- デバッグシート ---------- */
+  .debug-sheet{
+    flex:1;min-height:0;border:1px solid var(--line-strong);background:#fff;
+    display:flex;flex-direction:column;
+  }
+  .debug-sheet-head{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:14px 18px;border-bottom:1px solid var(--line-strong);background:var(--header-bg);
+  }
+  .debug-sheet-head h2{margin:0;font-size:16px;font-weight:800;}
+  .debug-sheet-head p{margin:3px 0 0;font-size:11.5px;color:var(--muted);}
+  .debug-intro{
+    padding:11px 18px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);
+  }
+  .debug-table{flex:1;min-height:0;overflow:auto;}
+  .debug-grid{
+    display:grid;grid-template-columns:minmax(300px,2fr) 210px 180px 180px 34px;
+    align-items:center;min-width:940px;
+  }
+  .debug-grid-head{
+    position:sticky;top:0;z-index:2;background:var(--header-bg);font-size:11.5px;font-weight:700;
+    min-height:48px;border-bottom:1px solid var(--line-strong);
+  }
+  .debug-grid-head > span{padding:0 18px;}
+  .debug-issue-row{min-height:58px;border-bottom:1px solid var(--line);}
+  .debug-issue-row:hover{background:var(--hover);}
+  .debug-issue-row input[type=text],
+  .debug-issue-row input[type=date],
+  .debug-issue-row select{
+    width:calc(100% - 20px);height:38px;margin:0 10px;border:1px solid transparent;
+    background:transparent;color:var(--ink);font-family:'Noto Sans JP',sans-serif;font-size:12.5px;
+    padding:0 8px;
+  }
+  .debug-issue-row input[type=text]{cursor:text;}
+  .debug-issue-row input[type=text]:hover,
+  .debug-issue-row input[type=text]:focus,
+  .debug-issue-row input[type=date]:hover,
+  .debug-issue-row select:hover{
+    background:#fff;border-color:var(--line-strong);outline:none;
+  }
+  .debug-issue-row select{font-weight:600;cursor:pointer;}
+  .debug-delete{
+    border:none;background:transparent;color:var(--faint);font-size:16px;cursor:pointer;
+    width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  }
+  .debug-delete:hover{color:#c0574a;background:var(--hover);}
+  .debug-empty{padding:28px;text-align:center;color:var(--faint);font-size:12.5px;}
+  .modal.debug-modal{width:620px;height:76vh;max-height:76vh;}
+  .modal.debug-modal .modal-body textarea{min-height:300px;}
+
   /* ---------- modal ---------- */
   .modal-overlay{
     display:none;position:fixed;inset:0;background:rgba(20,20,20,.35);
@@ -437,52 +508,83 @@
     <div class="viewbar" id="viewbar"></div>
   </div>
 
-  <div class="toolbar2">
-    <button class="btn btn-primary" id="addRootBtn">＋ タスクを追加</button>
-    <button class="btn btn-ghost" id="jumpTodayBtn">今日へ移動</button>
-    <div class="assignee-filter" id="assigneeFilterBar"></div>
-    <span id="authUserBadge" style="display:none;font-size:12px;color:var(--muted);background:#fff;border:1px solid var(--line);padding:7px 10px;"></span>
-    <button class="btn btn-ghost" id="googleSignOutBtn" style="display:none;">ログアウト</button>
-    <span class="today-badge" id="todayBadge"></span>
+  <div class="section-tabs" role="tablist" aria-label="管理画面">
+    <button class="section-tab active" id="taskTabBtn" role="tab" aria-selected="true" aria-controls="taskManagementView">タスク管理</button>
+    <button class="section-tab" id="debugTabBtn" role="tab" aria-selected="false" aria-controls="debugSheetView">デバッグシート</button>
+    <span class="sync-status" id="syncStatusBadge">接続準備中</span>
   </div>
 
-  <div class="board" id="boardEl">
-    <div class="panel-left" id="panelLeft">
-      <div class="lhead">
-        <button class="collapse-btn" id="collapseBtn" title="タスクリストを隠す">⟨⟨</button>
-        <span class="name-h">タスク</span>
-        <span>進捗</span>
-        <span>担当者</span>
-      </div>
-      <div id="leftRows"></div>
+  <div class="workspace-view active" id="taskManagementView" role="tabpanel" aria-labelledby="taskTabBtn">
+    <div class="toolbar2">
+      <button class="btn btn-primary" id="addRootBtn">＋ タスクを追加</button>
+      <button class="btn btn-ghost" id="jumpTodayBtn">今日へ移動</button>
+      <div class="assignee-filter" id="assigneeFilterBar"></div>
+      <span id="authUserBadge" style="display:none;font-size:12px;color:var(--muted);background:#fff;border:1px solid var(--line);padding:7px 10px;"></span>
+      <button class="btn btn-ghost" id="googleSignOutBtn" style="display:none;">ログアウト</button>
+      <span class="today-badge" id="todayBadge"></span>
     </div>
-    <div class="panel-resizer" id="panelResizer"></div>
-    <div class="panel-right" id="panelRight">
-      <div class="rhead" id="rhead">
-        <div class="rhead-month" id="rheadMonth"></div>
-        <div class="rhead-day" id="rheadDay"></div>
-        <div class="rhead-milestone" id="rheadMilestone"></div>
+
+    <div class="board" id="boardEl">
+      <div class="panel-left" id="panelLeft">
+        <div class="lhead">
+          <button class="collapse-btn" id="collapseBtn" title="タスクリストを隠す">⟨⟨</button>
+          <span class="name-h">タスク</span>
+          <span>進捗</span>
+          <span>担当者</span>
+        </div>
+        <div id="leftRows"></div>
       </div>
-      <div class="rbody" id="rbody"></div>
+      <div class="panel-resizer" id="panelResizer"></div>
+      <div class="panel-right" id="panelRight">
+        <div class="rhead" id="rhead">
+          <div class="rhead-month" id="rheadMonth"></div>
+          <div class="rhead-day" id="rheadDay"></div>
+          <div class="rhead-milestone" id="rheadMilestone"></div>
+        </div>
+        <div class="rbody" id="rbody"></div>
+      </div>
+      <button class="reopen-btn" id="reopenListBtn" title="タスクリストを表示">☰</button>
     </div>
-    <button class="reopen-btn" id="reopenListBtn" title="タスクリストを表示">☰</button>
+
+    <div class="history-section">
+      <div class="history-head">
+        <h2>作業履歴</h2>
+        <button class="btn btn-primary" id="addHistoryBtn">＋ 履歴を追加</button>
+      </div>
+      <div class="history-table" id="historyTable">
+        <div class="hhead">
+          <span>作業内容</span>
+          <span>作業区分</span>
+          <span>担当者</span>
+          <span>編集日</span>
+          <span></span>
+        </div>
+        <div id="historyRows"></div>
+      </div>
+    </div>
   </div>
 
-  <div class="history-section">
-    <div class="history-head">
-      <h2>作業履歴</h2>
-      <button class="btn btn-primary" id="addHistoryBtn">＋ 履歴を追加</button>
-    </div>
-    <div class="history-table" id="historyTable">
-      <div class="hhead">
-        <span>作業内容</span>
-        <span>作業区分</span>
-        <span>担当者</span>
-        <span>編集日</span>
-        <span></span>
+  <div class="workspace-view" id="debugSheetView" role="tabpanel" aria-labelledby="debugTabBtn">
+    <section class="debug-sheet">
+      <div class="debug-sheet-head">
+        <div>
+          <h2>デバッグシート</h2>
+          <p>問題名を右クリックすると概要を表示・編集できます</p>
+        </div>
+        <button class="btn btn-primary" id="addDebugIssueBtn">＋ 問題を追加</button>
       </div>
-      <div id="historyRows"></div>
-    </div>
+      <div class="debug-intro">不具合や確認事項を記録し、対応状況と発生・解決の日付を共有します。</div>
+      <div class="debug-table">
+        <div class="debug-grid debug-grid-head">
+          <span>発生している問題</span>
+          <span>対応状況</span>
+          <span>発生した日付</span>
+          <span>解決した日付</span>
+          <span></span>
+        </div>
+        <div id="debugIssueRows"></div>
+      </div>
+    </section>
   </div>
 
 </div>
@@ -504,6 +606,27 @@
     <div class="modal-foot">
       <button class="btn btn-danger" id="mDelete">このタスクを削除</button>
       <button class="btn btn-primary" id="mSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="debugIssueModalOverlay">
+  <div class="modal debug-modal">
+    <div class="modal-head">
+      <span>問題の概要</span>
+      <button class="modal-close" id="debugIssueModalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <label>発生している問題
+        <input type="text" id="debugIssueTitle">
+      </label>
+      <label class="memo-label">概要
+        <textarea id="debugIssueSummary" placeholder="再現手順、発生条件、調査内容、対応方針などを記録できます"></textarea>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="debugIssueDelete">この問題を削除</button>
+      <button class="btn btn-primary" id="debugIssueSave">保存</button>
     </div>
   </div>
 </div>
@@ -592,6 +715,7 @@ const googleSignInBtn = document.getElementById('googleSignInBtn');
 const googleSignOutBtn = document.getElementById('googleSignOutBtn');
 const authUserBadge = document.getElementById('authUserBadge');
 const authErrorMessage = document.getElementById('authErrorMessage');
+const syncStatusBadge = document.getElementById('syncStatusBadge');
 
 const firebaseAuth = firebaseReady ? firebase.auth() : null;
 const googleAuthProvider = firebaseReady
@@ -642,6 +766,18 @@ function updateAuthUi(){
     const isSigningIn = authState === AUTH_STATE.SIGNING_IN;
     googleSignInBtn.disabled = isSigningIn;
     googleSignInBtn.textContent = isSigningIn ? 'ログイン中...' : 'Googleでログイン';
+  }
+
+  if(syncStatusBadge){
+    const syncLabels = {
+      [AUTH_STATE.INITIALIZING]: '接続準備中',
+      [AUTH_STATE.SIGNED_OUT]: '未ログイン',
+      [AUTH_STATE.SIGNING_IN]: 'ログイン中',
+      [AUTH_STATE.AUTHENTICATED]: 'Firebase接続中',
+      [AUTH_STATE.DATABASE_READY]: 'Firebase同期中',
+    };
+    syncStatusBadge.textContent = syncLabels[authState] || '接続準備中';
+    syncStatusBadge.classList.toggle('ready', authState === AUTH_STATE.DATABASE_READY);
   }
 }
 
@@ -750,6 +886,8 @@ function stopFirebaseSync(){
   dirtyHistoryIds.clear();
   deletedHistoryIds.clear();
   dirtyMilestoneDates.clear();
+  dirtyDebugIssueIds.clear();
+  deletedDebugIssueIds.clear();
 
   didFirstRender = false;
   didInitialScroll = false;
@@ -760,6 +898,7 @@ function stopFirebaseSync(){
   state.tasks = seedTasks();
   state.history = [];
   state.milestones = {};
+  state.debugIssues = [];
 }
 
 function startFirebaseSync(){
@@ -907,9 +1046,17 @@ let state = {
   view: 'normal',
   history: [],
   milestones: {},
+  debugIssues: [],
 };
 let currentUser = null;
 let assigneeFilter = null;
+
+const WORKSPACE_VIEW = Object.freeze({
+  TASKS: 'TASKS',
+  DEBUG: 'DEBUG',
+});
+let currentWorkspaceView = WORKSPACE_VIEW.TASKS;
+const DEBUG_STATUS_OPTIONS = ['未対応', '対応中', '確認待ち', '解決済み'];
 
 /* ===================== Firebaseとの同期（変更があった部分だけ送る） ===================== */
 // タスクは Firebase 上では { id: {...フィールド..., childOrder:[子のid,...]} } というフラットな形で持ち、
@@ -920,6 +1067,8 @@ let dirtyRootOrder = false;
 let dirtyHistoryIds = new Set();
 let deletedHistoryIds = new Set();
 let dirtyMilestoneDates = new Set();
+let dirtyDebugIssueIds = new Set();
+let deletedDebugIssueIds = new Set();
 let saveTimer = null;
 
 const TEXT_EDIT_STATE = Object.freeze({
@@ -950,6 +1099,8 @@ function markContainerOwnerDirty(path){
 function markHistoryDirty(id){ if(id) dirtyHistoryIds.add(id); }
 function markHistoryDeleted(id){ if(id){ deletedHistoryIds.add(id); dirtyHistoryIds.delete(id); } }
 function markMilestoneDirty(dateStr){ dirtyMilestoneDates.add(dateStr); }
+function markDebugIssueDirty(id){ if(id) dirtyDebugIssueIds.add(id); }
+function markDebugIssueDeleted(id){ if(id){ deletedDebugIssueIds.add(id); dirtyDebugIssueIds.delete(id); } }
 
 function serializeTaskFlat(node){
   const flat = {
@@ -1018,6 +1169,15 @@ function doSave(){
     updates['milestones/'+d] = state.milestones[d] || null;
     hasUpdates = true;
   });
+  dirtyDebugIssueIds.forEach(id=>{
+    const issue = state.debugIssues.find(item=>item.id===id);
+    updates['debugIssues/'+id] = issue || null;
+    hasUpdates = true;
+  });
+  deletedDebugIssueIds.forEach(id=>{
+    updates['debugIssues/'+id] = null;
+    hasUpdates = true;
+  });
 
   dirtyTaskIds.clear();
   deletedTaskIds.clear();
@@ -1025,6 +1185,8 @@ function doSave(){
   dirtyHistoryIds.clear();
   deletedHistoryIds.clear();
   dirtyMilestoneDates.clear();
+  dirtyDebugIssueIds.clear();
+  deletedDebugIssueIds.clear();
 
   if(!hasUpdates) return;
   boardRef.update(updates).catch(err=> console.error('Firebase書き込みエラー', err));
@@ -1315,13 +1477,31 @@ function tintColorFor(task){
 }
 
 /* ===================== 描画 ===================== */
+function renderWorkspaceView(){
+  const isTaskView = currentWorkspaceView === WORKSPACE_VIEW.TASKS;
+  document.getElementById('taskManagementView').classList.toggle('active', isTaskView);
+  document.getElementById('debugSheetView').classList.toggle('active', !isTaskView);
+  document.getElementById('taskTabBtn').classList.toggle('active', isTaskView);
+  document.getElementById('debugTabBtn').classList.toggle('active', !isTaskView);
+  document.getElementById('taskTabBtn').setAttribute('aria-selected', String(isTaskView));
+  document.getElementById('debugTabBtn').setAttribute('aria-selected', String(!isTaskView));
+  document.getElementById('viewbar').style.display = isTaskView ? '' : 'none';
+}
+function changeWorkspaceView(nextView){
+  if(!Object.values(WORKSPACE_VIEW).includes(nextView)) return;
+  currentWorkspaceView = nextView;
+  renderWorkspaceView();
+}
+
 function render(){
   const rows = buildRows();
+  renderWorkspaceView();
   renderViewbar();
   renderAssigneeFilterBar();
   renderLeft(rows);
   renderRight(rows);
   renderHistory();
+  renderDebugIssues();
   document.getElementById('todayBadge').textContent = '今日：'+todayStr().replace(/-/g,'/');
 }
 
@@ -1516,6 +1696,7 @@ function openModal(path){
   setTimeout(()=>{ mName.focus(); mName.select(); }, 0);
 }
 function closeModal(){
+  if(modalOverlay.contains(document.activeElement)) document.activeElement.blur();
   modalOverlay.classList.remove('open');
   modalPath = null;
 }
@@ -1529,12 +1710,16 @@ document.getElementById('mSave').addEventListener('click', ()=>{
   const t = getNode(modalPath);
   t.name = mName.value.trim() || '新しいタスク';
   t.memo = mMemo.value;
+  markTaskDirty(t.id);
+  discardPendingServerData();
   closeModal();
-  commit();
+  render();
+  saveImmediately();
 });
 document.getElementById('mDelete').addEventListener('click', ()=>{
   if(!modalPath) return;
   const p = modalPath;
+  discardPendingServerData();
   closeModal();
   deleteTask(p);
 });
@@ -2258,6 +2443,173 @@ function buildHistoryRow(h){
 }
 document.getElementById('addHistoryBtn').addEventListener('click', addHistoryEntry);
 
+/* ===================== デバッグシート ===================== */
+const DEBUG_MODAL_STATE = Object.freeze({
+  CLOSED: 'CLOSED',
+  EDITING: 'EDITING',
+});
+let debugModal = {
+  state: DEBUG_MODAL_STATE.CLOSED,
+  issueId: null,
+};
+
+const debugIssueModalOverlay = document.getElementById('debugIssueModalOverlay');
+const debugIssueTitle = document.getElementById('debugIssueTitle');
+const debugIssueSummary = document.getElementById('debugIssueSummary');
+
+function makeDebugIssue(){
+  return {
+    id: newId('d'),
+    title: '新しい問題',
+    summary: '',
+    status: DEBUG_STATUS_OPTIONS[0],
+    occurredDate: todayStr(),
+    resolvedDate: '',
+  };
+}
+function findDebugIssue(id){
+  return state.debugIssues.find(issue=>issue.id===id) || null;
+}
+function addDebugIssue(){
+  const issue = makeDebugIssue();
+  state.debugIssues.push(issue);
+  markDebugIssueDirty(issue.id);
+  commit();
+  requestAnimationFrame(()=>{
+    const input = document.querySelector('[data-debug-issue-id="'+issue.id+'"] input[type=text]');
+    if(input){ input.focus(); input.select(); }
+  });
+}
+function deleteDebugIssue(id){
+  if(!findDebugIssue(id)) return;
+  markDebugIssueDeleted(id);
+  state.debugIssues = state.debugIssues.filter(issue=>issue.id!==id);
+  discardPendingServerData();
+  render();
+  saveImmediately();
+}
+function renderDebugIssues(){
+  const wrap = document.getElementById('debugIssueRows');
+  wrap.innerHTML = '';
+  if(state.debugIssues.length===0){
+    const empty = document.createElement('div');
+    empty.className = 'debug-empty';
+    empty.textContent = 'まだ問題はありません。「＋ 問題を追加」から記録できます。';
+    wrap.appendChild(empty);
+    return;
+  }
+  state.debugIssues.forEach(issue=> wrap.appendChild(buildDebugIssueRow(issue)));
+}
+function buildDebugIssueRow(issue){
+  const row = document.createElement('div');
+  row.className = 'debug-grid debug-issue-row';
+  row.dataset.debugIssueId = issue.id;
+
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.value = issue.title;
+  titleInput.placeholder = '発生している問題';
+  titleInput.title = '右クリックで概要を表示・編集';
+  bindSynchronizedTextInput(titleInput, (value)=>{
+    issue.title = value;
+    markDebugIssueDirty(issue.id);
+  });
+  titleInput.addEventListener('contextmenu', (event)=>{
+    event.preventDefault();
+    event.stopPropagation();
+    openDebugIssueModal(issue.id);
+  });
+  row.appendChild(titleInput);
+
+  const statusSelect = document.createElement('select');
+  DEBUG_STATUS_OPTIONS.forEach(status=>{
+    const option = document.createElement('option');
+    option.value = status;
+    option.textContent = status;
+    option.selected = status === issue.status;
+    statusSelect.appendChild(option);
+  });
+  statusSelect.addEventListener('change', ()=>{
+    issue.status = statusSelect.value;
+    markDebugIssueDirty(issue.id);
+    scheduleSave();
+  });
+  row.appendChild(statusSelect);
+
+  const occurredDateInput = document.createElement('input');
+  occurredDateInput.type = 'date';
+  occurredDateInput.value = issue.occurredDate;
+  occurredDateInput.addEventListener('change', ()=>{
+    issue.occurredDate = occurredDateInput.value || todayStr();
+    markDebugIssueDirty(issue.id);
+    scheduleSave();
+  });
+  row.appendChild(occurredDateInput);
+
+  const resolvedDateInput = document.createElement('input');
+  resolvedDateInput.type = 'date';
+  resolvedDateInput.value = issue.resolvedDate;
+  resolvedDateInput.addEventListener('change', ()=>{
+    issue.resolvedDate = resolvedDateInput.value;
+    markDebugIssueDirty(issue.id);
+    scheduleSave();
+  });
+  row.appendChild(resolvedDateInput);
+
+  const deleteButton = document.createElement('button');
+  deleteButton.className = 'debug-delete';
+  deleteButton.title = '削除';
+  deleteButton.textContent = '×';
+  deleteButton.addEventListener('click', ()=> deleteDebugIssue(issue.id));
+  row.appendChild(deleteButton);
+
+  return row;
+}
+function openDebugIssueModal(issueId){
+  const issue = findDebugIssue(issueId);
+  if(!issue) return;
+  debugModal = {state:DEBUG_MODAL_STATE.EDITING, issueId};
+  debugIssueTitle.value = issue.title;
+  debugIssueSummary.value = issue.summary;
+  debugIssueModalOverlay.classList.add('open');
+  setTimeout(()=>{ debugIssueTitle.focus(); debugIssueTitle.select(); }, 0);
+}
+function closeDebugIssueModal(){
+  if(debugIssueModalOverlay.contains(document.activeElement)) document.activeElement.blur();
+  debugIssueModalOverlay.classList.remove('open');
+  debugModal = {state:DEBUG_MODAL_STATE.CLOSED, issueId:null};
+}
+function saveDebugIssueModal(){
+  if(debugModal.state !== DEBUG_MODAL_STATE.EDITING) return;
+  const issue = findDebugIssue(debugModal.issueId);
+  if(!issue){ closeDebugIssueModal(); return; }
+  issue.title = debugIssueTitle.value.trim() || '新しい問題';
+  issue.summary = debugIssueSummary.value;
+  markDebugIssueDirty(issue.id);
+  discardPendingServerData();
+  closeDebugIssueModal();
+  render();
+  saveImmediately();
+}
+
+document.getElementById('taskTabBtn').addEventListener('click', ()=> changeWorkspaceView(WORKSPACE_VIEW.TASKS));
+document.getElementById('debugTabBtn').addEventListener('click', ()=> changeWorkspaceView(WORKSPACE_VIEW.DEBUG));
+document.getElementById('addDebugIssueBtn').addEventListener('click', addDebugIssue);
+document.getElementById('debugIssueModalClose').addEventListener('click', closeDebugIssueModal);
+document.getElementById('debugIssueSave').addEventListener('click', saveDebugIssueModal);
+document.getElementById('debugIssueDelete').addEventListener('click', ()=>{
+  if(debugModal.state !== DEBUG_MODAL_STATE.EDITING) return;
+  const issueId = debugModal.issueId;
+  closeDebugIssueModal();
+  deleteDebugIssue(issueId);
+});
+debugIssueModalOverlay.addEventListener('click', (event)=>{
+  if(event.target===debugIssueModalOverlay) closeDebugIssueModal();
+});
+document.addEventListener('keydown', (event)=>{
+  if(event.key==='Escape' && debugIssueModalOverlay.classList.contains('open')) closeDebugIssueModal();
+});
+
 /* ===================== 最初に担当者を選ぶゲート ===================== */
 const userGateOverlay = document.getElementById('userGateOverlay');
 const userGateButtons = document.getElementById('userGateButtons');
@@ -2335,6 +2687,20 @@ function applyServerData(data){
   state.history = Object.keys(flatHistory).map(id=> flatHistory[id]).filter(Boolean);
 
   state.milestones = (data && data.milestones && typeof data.milestones==='object') ? data.milestones : {};
+
+  const flatDebugIssues = (data && data.debugIssues && typeof data.debugIssues==='object') ? data.debugIssues : {};
+  state.debugIssues = Object.keys(flatDebugIssues).map(id=>{
+    const issue = flatDebugIssues[id];
+    if(!issue || typeof issue!=='object') return null;
+    return {
+      id: issue.id || id,
+      title: typeof issue.title==='string' ? issue.title : '新しい問題',
+      summary: typeof issue.summary==='string' ? issue.summary : '',
+      status: DEBUG_STATUS_OPTIONS.includes(issue.status) ? issue.status : DEBUG_STATUS_OPTIONS[0],
+      occurredDate: issue.occurredDate || todayStr(),
+      resolvedDate: issue.resolvedDate || '',
+    };
+  }).filter(Boolean);
 }
 function isTypingActive(){
   const el = document.activeElement;

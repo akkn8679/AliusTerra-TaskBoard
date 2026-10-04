@@ -9,6 +9,7 @@
 - ログイン: Firebase Authentication（Google）
 - データ保存: Firebase Realtime Database
 - Database Path: `aliusTerraBoard`
+- 共有データ: `tasks / history / milestones / debugIssues`
 - 担当者: `きむち / しぶ / いつ / いちご`
 
 GoogleアカウントでFirebase Authenticationにログインできたユーザーは、タスクボードを利用できます。
@@ -87,8 +88,9 @@ GitHub上で:
 4. 必要なら「あなたは誰ですか？」でボード上の担当者名を選ぶ
 5. 既存タスクが表示されることを確認
 6. 新しいタスクを1件追加
-7. Firebase Console → Realtime Database → Data で反映を確認
-8. 別ブラウザまたは別端末でも同じURLを開き、リアルタイム同期を確認
+7. 「デバッグシート」タブで問題を追加し、問題名の右クリックから概要を保存
+8. Firebase Console → Realtime Database → Data で反映を確認
+9. 別ブラウザまたは別端末でも同じURLを開き、リアルタイム同期を確認
 
 ---
 
@@ -128,6 +130,6 @@ Realtime Database Rules
   └─ ログイン済みか判定
        ↓
 Realtime Database
-  └─ tasks / history / milestones などを保存
+  └─ tasks / history / milestones / debugIssues などを保存
 ```
 GitHub Pages deployment enabled.
