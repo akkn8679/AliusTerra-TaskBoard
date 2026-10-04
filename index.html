@@ -753,6 +753,8 @@ function stopFirebaseSync(){
 
   didFirstRender = false;
   didInitialScroll = false;
+  resetTextEditingState();
+  pendingServerData = null;
   pendingRenderFromServer = false;
 
   state.tasks = seedTasks();
@@ -770,19 +772,23 @@ function startFirebaseSync(){
 
   databaseValueListener = (snapshot)=>{
     const data = snapshot.val();
-    applyServerData(data);
 
     if(authState !== AUTH_STATE.DATABASE_READY){
       changeAuthState(AUTH_STATE.DATABASE_READY);
     }
 
-    if(!didFirstRender){
-      firstRenderOnce();
+    // 入力中のDOMだけでなくローカルstateも守る。
+    // Firebaseから返った直前の保存内容で、IME変換中の全文が巻き戻るのを防ぐ。
+    if(shouldDeferServerData()){
+      pendingServerData = data;
+      pendingRenderFromServer = true;
       return;
     }
 
-    if(isTypingActive()){
-      pendingRenderFromServer = true;
+    applyServerData(data);
+
+    if(!didFirstRender){
+      firstRenderOnce();
       return;
     }
     render();
@@ -916,6 +922,20 @@ let deletedHistoryIds = new Set();
 let dirtyMilestoneDates = new Set();
 let saveTimer = null;
 
+const TEXT_EDIT_STATE = Object.freeze({
+  IDLE: 'IDLE',
+  EDITING: 'EDITING',
+  COMPOSING: 'COMPOSING',
+});
+let textEditing = {
+  state: TEXT_EDIT_STATE.IDLE,
+  element: null,
+  applyValue: null,
+  lastCommittedValue: '',
+  hasLocalChanges: false,
+};
+let pendingServerData = null;
+
 function markTaskDirty(id){ if(id) dirtyTaskIds.add(id); }
 function markTaskDeleted(id){ if(id){ deletedTaskIds.add(id); dirtyTaskIds.delete(id); } }
 function markRootOrderDirty(){ dirtyRootOrder = true; }
@@ -962,6 +982,11 @@ function scheduleSave(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(doSave, 350);
 }
+function saveImmediately(){
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  doSave();
+}
 function doSave(){
   if(!firebaseReady || !firebaseAuth || !firebaseAuth.currentUser || authState !== AUTH_STATE.DATABASE_READY) return;
   const updates = {};
@@ -1003,6 +1028,104 @@ function doSave(){
 
   if(!hasUpdates) return;
   boardRef.update(updates).catch(err=> console.error('Firebase書き込みエラー', err));
+}
+
+function resetTextEditingState(){
+  textEditing = {
+    state: TEXT_EDIT_STATE.IDLE,
+    element: null,
+    applyValue: null,
+    lastCommittedValue: '',
+    hasLocalChanges: false,
+  };
+}
+function isSynchronizedTextEditing(){
+  return textEditing.state !== TEXT_EDIT_STATE.IDLE &&
+    !!textEditing.element && document.body.contains(textEditing.element);
+}
+function beginTextEditing(element, applyValue){
+  textEditing = {
+    state: TEXT_EDIT_STATE.EDITING,
+    element,
+    applyValue,
+    lastCommittedValue: element.value,
+    hasLocalChanges: false,
+  };
+}
+function applyCurrentTextValue(force){
+  if(!isSynchronizedTextEditing() || typeof textEditing.applyValue !== 'function') return false;
+  const value = textEditing.element.value;
+  if(!force && value === textEditing.lastCommittedValue) return false;
+  textEditing.applyValue(value);
+  textEditing.lastCommittedValue = value;
+  textEditing.hasLocalChanges = true;
+  return true;
+}
+function discardPendingServerData(){
+  pendingServerData = null;
+  pendingRenderFromServer = false;
+}
+function applyPendingServerData(){
+  if(!pendingRenderFromServer || shouldDeferServerData()) return;
+  const data = pendingServerData;
+  discardPendingServerData();
+  applyServerData(data);
+  if(!didFirstRender){
+    firstRenderOnce();
+    return;
+  }
+  render();
+}
+function finishTextEditing(element){
+  if(textEditing.element !== element) return;
+
+  // compositionend後にもinputが発生するブラウザ差を吸収し、DOM上の最終全文を採用する。
+  textEditing.state = TEXT_EDIT_STATE.EDITING;
+  applyCurrentTextValue(false);
+  const hasLocalChanges = textEditing.hasLocalChanges;
+
+  if(hasLocalChanges){
+    // 既にdebounce保存済みでも、blur時に同じ最終値を再度dirtyにして送る。
+    // これにより、編集中に保留した古いFirebase echoを安全に破棄できる。
+    applyCurrentTextValue(true);
+  }
+  resetTextEditingState();
+
+  if(hasLocalChanges){
+    discardPendingServerData();
+    saveImmediately();
+  } else {
+    applyPendingServerData();
+  }
+}
+function bindSynchronizedTextInput(element, applyValue, previewValue){
+  element.addEventListener('focus', ()=> beginTextEditing(element, applyValue));
+  element.addEventListener('compositionstart', ()=>{
+    if(textEditing.element !== element) beginTextEditing(element, applyValue);
+    textEditing.state = TEXT_EDIT_STATE.COMPOSING;
+    // 変換開始直前のdebounce保存も止め、未確定文字列をdirty stateから送らない。
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  });
+  element.addEventListener('input', (event)=>{
+    if(textEditing.element !== element) beginTextEditing(element, applyValue);
+    if(typeof previewValue === 'function') previewValue(element.value);
+    if(textEditing.state === TEXT_EDIT_STATE.COMPOSING || event.isComposing) return;
+    if(applyCurrentTextValue(false)) scheduleSave();
+  });
+  element.addEventListener('compositionend', ()=>{
+    if(textEditing.element !== element) beginTextEditing(element, applyValue);
+    textEditing.state = TEXT_EDIT_STATE.EDITING;
+    if(typeof previewValue === 'function') previewValue(element.value);
+    if(applyCurrentTextValue(false)) scheduleSave();
+  });
+  element.addEventListener('keydown', (event)=>{
+    if(event.key !== 'Enter') return;
+    if(event.isComposing || textEditing.state === TEXT_EDIT_STATE.COMPOSING || event.keyCode === 229) return;
+    event.preventDefault();
+    element.blur();
+  });
+  element.addEventListener('blur', ()=> finishTextEditing(element));
 }
 // UIを再描画したうえで、変更分をFirebaseにも送る（構造が変わる操作用）
 function commit(){
@@ -1287,11 +1410,11 @@ function buildLeftRow(r){
   nameInput.title = r.task.name;
   nameInput.addEventListener('click', (e)=> e.stopPropagation());
   nameInput.addEventListener('dblclick', (e)=> e.stopPropagation());
-  nameInput.addEventListener('input', (e)=>{
-    setField(r.path, 'name', e.target.value);
+  bindSynchronizedTextInput(nameInput, (value)=>{
+    setField(r.path, 'name', value);
+  }, (value)=>{
     const label = document.querySelector('.bar[data-task-id="'+r.task.id+'"] .label');
-    if(label) label.textContent = e.target.value;
-    scheduleSave();
+    if(label) label.textContent = value;
   });
   nameInput.addEventListener('blur', (e)=>{
     if(!e.target.value.trim()) commit();
@@ -2088,14 +2211,20 @@ function buildHistoryRow(h){
   contentInput.type='text';
   contentInput.value = h.content;
   contentInput.placeholder='作業内容';
-  contentInput.addEventListener('input', (e)=>{ h.content = e.target.value; markHistoryDirty(h.id); scheduleSave(); });
+  bindSynchronizedTextInput(contentInput, (value)=>{
+    h.content = value;
+    markHistoryDirty(h.id);
+  });
   row.appendChild(contentInput);
 
   const repoInput = document.createElement('input');
   repoInput.type='text';
   repoInput.value = h.repo;
   repoInput.placeholder='Unity / UI / Spine / 企画 など';
-  repoInput.addEventListener('input', (e)=>{ h.repo = e.target.value; markHistoryDirty(h.id); scheduleSave(); });
+  bindSynchronizedTextInput(repoInput, (value)=>{
+    h.repo = value;
+    markHistoryDirty(h.id);
+  });
   row.appendChild(repoInput);
 
   const asSel = document.createElement('select');
@@ -2212,6 +2341,16 @@ function isTypingActive(){
   if(!el) return false;
   return (el.tagName==='INPUT' || el.tagName==='TEXTAREA') && document.body.contains(el);
 }
+function shouldDeferServerData(){
+  return isSynchronizedTextEditing() || isTypingActive();
+}
+
+// モーダル等の非同期入力中にも受信適用を待ち、フォーカスが外れた時点で最新値を反映する。
+document.addEventListener('focusout', ()=>{
+  requestAnimationFrame(()=>{
+    if(!shouldDeferServerData()) applyPendingServerData();
+  });
+});
 
 /* ===================== 初期描画／Firebase同期 ===================== */
 let didInitialScroll = false;
@@ -2227,15 +2366,6 @@ function firstRenderOnce(){
     scrollToToday();
   }
 }
-
-// 入力中に他の人の変更で再描画されてカーソル位置が飛ばないよう、
-// 入力欄からフォーカスが外れたタイミングで保留していた再描画をまとめて行う。
-document.addEventListener('focusout', ()=>{
-  if(pendingRenderFromServer){
-    pendingRenderFromServer = false;
-    render();
-  }
-});
 
 // Realtime Database同期は Firebase Authentication の onAuthStateChanged から開始する。
 // 未ログイン状態ではタスクデータの読み込み・書き込みを開始しない。
