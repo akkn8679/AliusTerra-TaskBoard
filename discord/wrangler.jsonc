@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aliusterra-discord-history",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-10-12",
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "aliusterratasks",
+    "FIREBASE_DATABASE_URL": "https://aliusterratasks-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "FIREBASE_BOARD_PATH": "aliusTerraBoard",
+    "BOARD_URL": "https://akkn8679.github.io/AliusTerra-TaskBoard/",
+    "NOTIFICATIONS_ENABLED": "false"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "HISTORY_LOG", "class_name": "HistoryLog" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["HistoryLog"] }],
+  "observability": { "enabled": true }
+}
