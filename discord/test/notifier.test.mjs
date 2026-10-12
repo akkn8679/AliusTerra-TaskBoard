@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HistoryProcessor, DeliveryError, sendDiscord, discordPayload} from '../src/notifier.mjs';
+import {HistoryProcessor, DeliveryError, sendDiscord, discordPayload, discordWebhookUrl} from '../src/notifier.mjs';
 
 function notification(content = 'バトルを実装', revision = 'n1', operation = 'saved'){
   return {revision, operation, committedAt:1791790000000, actor:'きむち',
@@ -136,4 +136,21 @@ test('Discord confirmation is required and mentions are disabled; long content f
   await assert.rejects(sendDiscord(env, notification(), async()=>Response.json({})), /confirmation/);
   await assert.rejects(sendDiscord({...env, DISCORD_WEBHOOK_URL:'https://evil.example/api/webhooks/1/token'},
     notification(), ()=>assert.fail()), /Invalid Discord/);
+});
+
+test('invalid webhook diagnostics identify the format error without disclosing secret input or sending it', async()=>{
+  const examples=[
+    ['not-a-url-secret', 'missing or invalid'],
+    ['http://discord.com/api/webhooks/123/private-token', 'HTTPS is required'],
+    ['https://other.example/api/webhooks/123/private-token', 'host must be discord.com'],
+    ['https://user:private-token@discord.com/api/webhooks/123/token', 'embedded login credentials'],
+    ['https://discord.com/channels/123/private-token', 'not a channel or server link'],
+    ['https://discord.com/api/webhooks/private-id/private-token', 'ID must be numeric'],
+    ['https://discord.com/api/webhooks/123/private.token', 'token contains unexpected characters'],
+  ];
+  for(const [secret,reason] of examples){
+    await assert.rejects(sendDiscord({DISCORD_WEBHOOK_URL:secret}, notification(), ()=>assert.fail('must not send')),
+      error=>error.message.includes(reason) && !error.message.includes(secret) && !error.message.includes('private-token'));
+  }
+  assert.equal(discordWebhookUrl('https://discord.com/api/v10/webhooks/123/token_abc-123?wait=false').search, '?wait=true');
 });
