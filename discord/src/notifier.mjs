@@ -49,12 +49,14 @@ export function discordWebhookUrl(secret){
   catch{ throw new Error('Discord webhook secret is missing or invalid'); }
   // 入力したURLやトークンはエラーに含めず、設定の修正箇所だけを示す。
   if(url.protocol !== 'https:') throw new Error('Invalid Discord webhook URL: HTTPS is required');
-  if(url.hostname !== 'discord.com') throw new Error('Invalid Discord webhook URL: host must be discord.com');
+  if(!['discord.com','discordapp.com'].includes(url.hostname)) throw new Error('Invalid Discord webhook URL: host must be discord.com or discordapp.com');
   if(url.username || url.password) throw new Error('Invalid Discord webhook URL: embedded login credentials are not allowed');
   const path = /^\/api(?:\/v\d+)?\/webhooks\/([^/]+)\/([^/]+)$/.exec(url.pathname);
   if(!path) throw new Error('Invalid Discord webhook URL: use the copied webhook URL, not a channel or server link');
   if(!/^\d+$/.test(path[1])) throw new Error('Invalid Discord webhook URL: webhook ID must be numeric');
   if(!/^[\w-]+$/.test(path[2])) throw new Error('Invalid Discord webhook URL: webhook token contains unexpected characters');
+  // Discordがコピーする旧URLも受け付け、通信は現在の公式APIへ統一する。
+  url.hostname = 'discord.com';
   url.search = '';
   url.searchParams.set('wait', 'true');
   return url;

@@ -154,3 +154,16 @@ test('invalid webhook diagnostics identify the format error without disclosing s
   }
   assert.equal(discordWebhookUrl('https://discord.com/api/v10/webhooks/123/token_abc-123?wait=false').search, '?wait=true');
 });
+
+test('legacy Discord webhook URLs send only to the current official host with the same ID and token', async()=>{
+  const env={DISCORD_WEBHOOK_URL:'https://discordapp.com/api/webhooks/123/test_token-abc',
+    BOARD_URL:'https://akkn8679.github.io/AliusTerra-TaskBoard/'};
+  assert.equal(await sendDiscord(env,notification(),async url=>{
+    assert.equal(url.href,'https://discord.com/api/webhooks/123/test_token-abc?wait=true');
+    return Response.json({id:'confirmed'});
+  }),'confirmed');
+  for(const host of ['discordapp.com.evil.example','evil-discordapp.com','discordapp.example']){
+    await assert.rejects(sendDiscord({...env,DISCORD_WEBHOOK_URL:'https://'+host+'/api/webhooks/123/test_token-abc'},
+      notification(),()=>assert.fail('must not send secrets to a lookalike host')),/Invalid Discord/);
+  }
+});
