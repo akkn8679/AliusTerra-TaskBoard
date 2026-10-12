@@ -136,6 +136,8 @@ GitHub Pages deployment enabled.
 
 ## 7. Discord管理ログ
 
-作業履歴の確定保存をDiscord管理ログへ通知するCloudflare Workerを `discord/` に追加しました。
+作業履歴の右端の「未登録」ボタンを押すと、Discord管理ログへの投稿を登録します。
+内容を編集すると「未登録」に戻り、再度ボタンを押した時だけ更新内容を投稿します。通常の保存・編集・削除では自動投稿しません。
+「登録」は投稿受付済みを表し、Cloudflare WorkerによるDiscordへの反映には約1分かかります。
 投稿先はチャンネル専用Webhookで設定します。初期状態は通知無効です。
 初回接続、動作確認、停止方法は [discord/README.md](discord/README.md) を参照してください。

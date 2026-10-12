@@ -377,15 +377,16 @@
     padding:12px 16px;border-bottom:1px solid var(--line-strong);background:var(--header-bg);
   }
   .history-head h2{margin:0;font-size:13.5px;font-weight:700;color:var(--ink);}
-  .history-table{max-height:280px;overflow-y:auto;}
+  .history-notice{margin:0;padding:7px 16px;color:var(--muted);font-size:11px;border-bottom:1px solid var(--line);}
+  .history-table{max-height:280px;overflow:auto;}
   .hhead{
     position:sticky;top:0;z-index:2;background:var(--header-bg);color:var(--ink);
-    display:grid;grid-template-columns:2fr 1.3fr 100px 130px 26px;
+    display:grid;grid-template-columns:minmax(150px,2fr) minmax(110px,1.3fr) 80px 120px 26px 80px;min-width:630px;
     font-size:10.5px;font-weight:700;padding:9px 12px;gap:8px;
     border-bottom:1px solid var(--line-strong);
   }
   .hrow{
-    display:grid;grid-template-columns:2fr 1.3fr 100px 130px 26px;
+    display:grid;grid-template-columns:minmax(150px,2fr) minmax(110px,1.3fr) 80px 120px 26px 80px;min-width:630px;
     align-items:center;gap:8px;padding:0 12px;height:38px;
     border-bottom:1px solid var(--line);
   }
@@ -408,6 +409,12 @@
     width:22px;height:22px;display:flex;align-items:center;justify-content:center;
   }
   .hrow .icon-del:hover{color:#c0574a;background:var(--hover);}
+  .history-registration{height:27px;border:1px solid var(--line-strong);border-radius:5px;background:#fff;color:var(--ink);font:inherit;font-size:11px;cursor:pointer;}
+  .history-registration:hover:not(:disabled){background:var(--hover);border-color:var(--accent);}
+  .history-registration[data-state="REGISTERED"]{background:#edf7f1;color:#287349;border-color:#b9dcc8;}
+  .history-registration[data-state="ERROR"]{color:#a84936;border-color:#daab9f;}
+  .history-registration:disabled{cursor:default;}
+  .history-registration[data-state="REGISTERING"]{opacity:.65;}
 
   /* ---------- デバッグシート ---------- */
   .debug-sheet{
@@ -552,6 +559,7 @@
         <h2>作業履歴</h2>
         <button class="btn btn-primary" id="addHistoryBtn">＋ 履歴を追加</button>
       </div>
+      <p class="history-notice" id="historyRegistrationNotice" role="status">右端の「未登録」を押すとDiscordへ投稿します。登録は投稿受付済みで、反映まで約1分かかります。</p>
       <div class="history-table" id="historyTable">
         <div class="hhead">
           <span>作業内容</span>
@@ -559,6 +567,7 @@
           <span>担当者</span>
           <span>編集日</span>
           <span></span>
+          <span>Discord登録</span>
         </div>
         <div id="historyRows"></div>
       </div>
@@ -888,6 +897,8 @@ function stopFirebaseSync(){
   deletedHistoryIds.clear();
   pendingHistoryNotifications.clear();
   latestHistoryNotificationRevisions.clear();
+  registeredHistoryNotifications.clear();
+  historyRegistrationOperations.clear();
   clearTimeout(historyNotificationRetryTimer);
   historyNotificationRetryTimer = null;
   historyNotificationRetryAttempts = 0;
@@ -1072,9 +1083,14 @@ let deletedTaskIds = new Set();
 let dirtyRootOrder = false;
 let dirtyHistoryIds = new Set();
 let deletedHistoryIds = new Set();
-// 履歴の確定値だけを通知する。入力中の350ms自動保存は通知しない。
+// Discord登録ボタンで明示的に登録した値だけを通知する。
 const pendingHistoryNotifications = new Map();
 const latestHistoryNotificationRevisions = new Map();
+const registeredHistoryNotifications = new Map();
+const historyRegistrationOperations = new Map();
+const HISTORY_REGISTRATION_STATE = Object.freeze({
+  UNREGISTERED:'UNREGISTERED', REGISTERING:'REGISTERING', REGISTERED:'REGISTERED', ERROR:'ERROR',
+});
 let historyNotificationRetryTimer = null;
 let historyNotificationRetryAttempts = 0;
 let dirtyMilestoneDates = new Set();
@@ -1109,15 +1125,67 @@ function markContainerOwnerDirty(path){
 }
 function markHistoryDirty(id){ if(id) dirtyHistoryIds.add(id); }
 function markHistoryDeleted(id){ if(id){ deletedHistoryIds.add(id); dirtyHistoryIds.delete(id); } }
+function historyNotificationEntry(history){
+  return {id:history.id, content:history.content || '', repo:history.repo || '',
+    assignee:history.assignee || '', date:history.date || ''};
+}
+function historyRegistrationSignature(entry){
+  return JSON.stringify([entry.id, entry.content, entry.repo, entry.assignee, entry.date]);
+}
+function getHistoryRegistrationState(history){
+  const signature = historyRegistrationSignature(historyNotificationEntry(history));
+  const operation = historyRegistrationOperations.get(history.id);
+  if(operation && operation.signature === signature) return operation.state;
+  const notification = registeredHistoryNotifications.get(history.id);
+  return notification?.trigger === 'manual' && notification.operation === 'saved' && notification.entry &&
+    historyRegistrationSignature(notification.entry) === signature
+    ? HISTORY_REGISTRATION_STATE.REGISTERED : HISTORY_REGISTRATION_STATE.UNREGISTERED;
+}
+function refreshHistoryRegistrationButtons(){
+  document.querySelectorAll('#historyRows .hrow').forEach(row=>{
+    const history = state.history.find(h=>h.id===row.dataset.historyId);
+    if(history) updateHistoryRegistrationRow(row, history);
+  });
+}
+function setHistoryRegistrationNotice(message){
+  const notice = document.getElementById('historyRegistrationNotice');
+  if(notice) notice.textContent = message;
+}
+function registerHistoryEntry(id){
+  if(textEditing.state === TEXT_EDIT_STATE.COMPOSING){
+    setHistoryRegistrationNotice('日本語の変換を確定してから登録してください。');
+    return;
+  }
+  if(textEditing.element) finishTextEditing(textEditing.element);
+  const history = state.history.find(h=>h.id===id);
+  if(!history) return;
+  const registrationState = getHistoryRegistrationState(history);
+  if(registrationState === HISTORY_REGISTRATION_STATE.REGISTERING || registrationState === HISTORY_REGISTRATION_STATE.REGISTERED) return;
+  if(!history.content.trim()){
+    setHistoryRegistrationNotice('作業内容を入力してから登録してください。');
+    return;
+  }
+  if(!firebaseReady || !firebaseAuth?.currentUser || authState !== AUTH_STATE.DATABASE_READY){
+    setHistoryRegistrationNotice('ログインと接続を確認してから、もう一度登録してください。');
+    return;
+  }
+  queueHistoryNotification(history);
+  const notification = pendingHistoryNotifications.get(id);
+  historyRegistrationOperations.set(id, {revision:notification.revision,
+    signature:historyRegistrationSignature(notification.entry), state:HISTORY_REGISTRATION_STATE.REGISTERING});
+  markHistoryDirty(id);
+  refreshHistoryRegistrationButtons();
+  saveImmediately();
+}
 function queueHistoryNotification(history, operation = 'saved'){
   if(!history || !history.id) return;
   const revision = newId('n');
   latestHistoryNotificationRevisions.set(history.id, revision);
   pendingHistoryNotifications.set(history.id, {
     revision,
+    trigger:'manual',
     operation,
-    entry: {id:history.id, content:history.content || '', repo:history.repo || '',
-      assignee:history.assignee || '', date:history.date || ''},
+    entry: historyNotificationEntry(history),
     actor: currentUser || '',
     committedAt: firebase.database.ServerValue.TIMESTAMP,
   });
@@ -1220,8 +1288,24 @@ function doSave(){
   deletedDebugIssueIds.clear();
 
   if(!hasUpdates) return;
+  notificationBatch.forEach((notification, id)=>{
+    const operation = historyRegistrationOperations.get(id);
+    if(operation?.revision === notification.revision) operation.state = HISTORY_REGISTRATION_STATE.REGISTERING;
+  });
+  refreshHistoryRegistrationButtons();
   boardRef.update(updates).then(()=>{
+    if(!firebaseAuth.currentUser || firebaseAuth.currentUser.uid !== savingUserId) return;
     if(notificationBatch.size) historyNotificationRetryAttempts = 0;
+    notificationBatch.forEach((notification, id)=>{
+      if(latestHistoryNotificationRevisions.get(id) !== notification.revision) return;
+      registeredHistoryNotifications.set(id, notification);
+      if(historyRegistrationOperations.get(id)?.revision === notification.revision) historyRegistrationOperations.delete(id);
+    });
+    if(notificationBatch.size){
+      refreshHistoryRegistrationButtons();
+      setHistoryRegistrationNotice('登録しました。Discordへの反映まで約1分かかります。編集した履歴は再登録してください。');
+      applyPendingServerData();
+    }
   }).catch(err=>{
     console.error('Firebase書き込みエラー', err);
     // 確定履歴と通知は同時に保存される。失敗時は新しい編集を上書きせず再送する。
@@ -1229,9 +1313,15 @@ function doSave(){
     notificationBatch.forEach((notification, id)=>{
       if(latestHistoryNotificationRevisions.get(id) !== notification.revision || pendingHistoryNotifications.has(id)) return;
       pendingHistoryNotifications.set(id, notification);
+      const operation = historyRegistrationOperations.get(id);
+      if(operation?.revision === notification.revision) operation.state = HISTORY_REGISTRATION_STATE.ERROR;
       if(state.history.some(h=>h.id===id)) markHistoryDirty(id);
       else markHistoryDeleted(id);
     });
+    if(notificationBatch.size){
+      refreshHistoryRegistrationButtons();
+      setHistoryRegistrationNotice('登録に失敗しました。接続を確認してください。自動再試行後も未登録の場合は、もう一度押してください。');
+    }
     if(pendingHistoryNotifications.size && historyNotificationRetryAttempts < 3){
       clearTimeout(historyNotificationRetryTimer);
       historyNotificationRetryTimer = setTimeout(saveImmediately, 5000 * 2**historyNotificationRetryAttempts++);
@@ -2418,8 +2508,10 @@ function addHistoryEntry(){
   });
 }
 function deleteHistoryEntry(id){
-  const history = state.history.find(h=>h.id===id);
-  if(history) queueHistoryNotification(history, 'deleted');
+  // 削除・通常の保存ではDiscordへ投稿しない。登録済みのスナップショットは保持する。
+  pendingHistoryNotifications.delete(id);
+  latestHistoryNotificationRevisions.delete(id);
+  historyRegistrationOperations.delete(id);
   markHistoryDeleted(id);
   state.history = state.history.filter(h=>h.id!==id);
   commit();
@@ -2442,6 +2534,7 @@ function renderHistory(){
 function buildHistoryRow(h){
   const row = document.createElement('div');
   row.className='hrow';
+  row.dataset.historyId = h.id;
 
   const contentInput = document.createElement('input');
   contentInput.type='text';
@@ -2450,7 +2543,8 @@ function buildHistoryRow(h){
   bindSynchronizedTextInput(contentInput, (value)=>{
     h.content = value;
     markHistoryDirty(h.id);
-  }, null, ()=> queueHistoryNotification(h));
+    updateHistoryRegistrationRow(row, h);
+  });
   row.appendChild(contentInput);
 
   const repoInput = document.createElement('input');
@@ -2460,7 +2554,8 @@ function buildHistoryRow(h){
   bindSynchronizedTextInput(repoInput, (value)=>{
     h.repo = value;
     markHistoryDirty(h.id);
-  }, null, ()=> queueHistoryNotification(h));
+    updateHistoryRegistrationRow(row, h);
+  });
   row.appendChild(repoInput);
 
   const asSel = document.createElement('select');
@@ -2473,7 +2568,7 @@ function buildHistoryRow(h){
   asSel.addEventListener('change', (e)=>{
     h.assignee = e.target.value;
     markHistoryDirty(h.id);
-    queueHistoryNotification(h);
+    updateHistoryRegistrationRow(row, h);
     scheduleSave();
   });
   row.appendChild(asSel);
@@ -2484,7 +2579,6 @@ function buildHistoryRow(h){
   dateInput.addEventListener('change', (e)=>{
     h.date = e.target.value || todayStr();
     markHistoryDirty(h.id);
-    queueHistoryNotification(h);
     commit();
   });
   row.appendChild(dateInput);
@@ -2496,7 +2590,31 @@ function buildHistoryRow(h){
   delBtn.addEventListener('click', ()=> deleteHistoryEntry(h.id));
   row.appendChild(delBtn);
 
+  const registrationButton = document.createElement('button');
+  registrationButton.type='button';
+  registrationButton.className='history-registration';
+  // 入力欄のblurによる再描画でクリックが消えないよう、確定は登録処理が行う。
+  registrationButton.addEventListener('pointerdown', event=>event.preventDefault());
+  registrationButton.addEventListener('click', ()=> registerHistoryEntry(h.id));
+  row.appendChild(registrationButton);
+  updateHistoryRegistrationRow(row, h);
+
   return row;
+}
+function updateHistoryRegistrationRow(row, history){
+  const button = row.querySelector('.history-registration');
+  if(!button) return;
+  const registrationState = getHistoryRegistrationState(history);
+  button.dataset.state = registrationState;
+  button.textContent = registrationState === HISTORY_REGISTRATION_STATE.REGISTERED ? '登録' :
+    registrationState === HISTORY_REGISTRATION_STATE.REGISTERING ? '登録中…' : '未登録';
+  button.disabled = registrationState === HISTORY_REGISTRATION_STATE.REGISTERED || registrationState === HISTORY_REGISTRATION_STATE.REGISTERING;
+  button.title = registrationState === HISTORY_REGISTRATION_STATE.REGISTERED ? 'この内容はDiscordへの投稿受付済みです' :
+    registrationState === HISTORY_REGISTRATION_STATE.REGISTERING ? '登録を保存しています' :
+    registrationState === HISTORY_REGISTRATION_STATE.ERROR ? '登録に失敗しました。押すと再試行します' : '押すと、この内容をDiscordへ投稿します';
+  row.querySelectorAll('input,select,.icon-del').forEach(input=>{
+    input.disabled = registrationState === HISTORY_REGISTRATION_STATE.REGISTERING;
+  });
 }
 document.getElementById('addHistoryBtn').addEventListener('click', addHistoryEntry);
 
@@ -2742,6 +2860,11 @@ function applyServerData(data){
 
   const flatHistory = (data && data.history && typeof data.history==='object') ? data.history : {};
   state.history = Object.keys(flatHistory).map(id=> flatHistory[id]).filter(Boolean);
+  registeredHistoryNotifications.clear();
+  const notifications = data && data.historyNotifications && typeof data.historyNotifications==='object' ? data.historyNotifications : {};
+  Object.entries(notifications).forEach(([id,notification])=>{
+    if(notification && notification.entry && notification.entry.id===id) registeredHistoryNotifications.set(id, notification);
+  });
 
   state.milestones = (data && data.milestones && typeof data.milestones==='object') ? data.milestones : {};
 
@@ -2765,7 +2888,8 @@ function isTypingActive(){
   return (el.tagName==='INPUT' || el.tagName==='TEXTAREA') && document.body.contains(el);
 }
 function shouldDeferServerData(){
-  return isSynchronizedTextEditing() || isTypingActive();
+  return isSynchronizedTextEditing() || isTypingActive() ||
+    [...historyRegistrationOperations.values()].some(operation=>operation.state === HISTORY_REGISTRATION_STATE.REGISTERING);
 }
 
 // モーダル等の非同期入力中にも受信適用を待ち、フォーカスが外れた時点で最新値を反映する。

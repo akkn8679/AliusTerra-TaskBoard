@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {HistoryProcessor, DeliveryError, sendDiscord, discordPayload, discordWebhookUrl} from '../src/notifier.mjs';
 
 function notification(content = 'バトルを実装', revision = 'n1', operation = 'saved'){
-  return {revision, operation, committedAt:1791790000000, actor:'きむち',
+  return {revision, trigger:'manual', operation, committedAt:1791790000000, actor:'きむち',
     entry:{id:'h1', content, repo:'Unity', assignee:'きむち', date:'2026-10-12'}};
 }
 class Storage {
@@ -136,6 +136,24 @@ test('Discord confirmation is required and mentions are disabled; long content f
   await assert.rejects(sendDiscord(env, notification(), async()=>Response.json({})), /confirmation/);
   await assert.rejects(sendDiscord({...env, DISCORD_WEBHOOK_URL:'https://evil.example/api/webhooks/1/token'},
     notification(), ()=>assert.fail()), /Invalid Discord/);
+});
+
+test('automatic notifications from an old open page are ignored', async()=>{
+  const old = notification();
+  delete old.trigger;
+  const processor = new HistoryProcessor(new Storage(), async()=>({h1:old}), ()=>assert.fail('unexpected automatic post'));
+  assert.equal((await processor.run()).sent,0);
+});
+
+test('first manual registration of previously auto-posted content sends once', async()=>{
+  const storage=new Storage();
+  const record=notification();
+  await storage.put('history:h1',{revision:'old-auto',signature:JSON.stringify(['saved',record.entry]),messageId:'old-message'});
+  let deliveries=0;
+  const processor=new HistoryProcessor(storage,async()=>({h1:record}),async()=>{deliveries++;return 'manual-message';});
+  assert.equal((await processor.run()).sent,1);
+  assert.equal((await processor.run()).sent,0);
+  assert.equal(deliveries,1);
 });
 
 test('invalid webhook diagnostics identify the format error without disclosing secret input or sending it', async()=>{
