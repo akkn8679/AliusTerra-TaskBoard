@@ -17,12 +17,12 @@ function app(update = ()=>Promise.resolve()){
   const source = html.slice(html.indexOf('function newId(prefix)'), html.indexOf('/* ===================== ツリー操作'));
   vm.runInContext(source, context);
   vm.runInContext("currentUser='きむち'; state.history=[{id:'h1',content:'前の内容',repo:'Unity',assignee:'きむち',date:'2026-10-12'}];", context);
-  function input(value){
+  function input(value, binding="value=>{state.history[0].content=value; markHistoryDirty('h1');}"){
     const handlers = {};
     const element = {value, addEventListener:(name,handler)=>{ handlers[name]=handler; },
       blur:()=>handlers.blur(), fire:(name,event={})=>handlers[name](event)};
     context.element = element;
-    vm.runInContext("bindSynchronizedTextInput(element, value=>{state.history[0].content=value; markHistoryDirty('h1');});", context);
+    vm.runInContext('bindSynchronizedTextInput(element, '+binding+');', context);
     return element;
   }
   return {context,writes,timers,input,run:source=>vm.runInContext(source,context)};
@@ -141,4 +141,43 @@ test('failed finalized save retains same revision and retries', async()=>{
   assert.ok(retry); retry.fn();
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(a.writes[0]['historyNotifications/h1'].revision,a.writes[1]['historyNotifications/h1'].revision);
+});
+
+test('agenda IME commits only final text to its own collection and never queues Discord', ()=>{
+  const a=app();
+  a.run("state.agendaItems=[{id:'a1',title:'前の議題',summary:'概要',status:'open',openedDate:'2026-10-12',completedDate:''}]");
+  const input=a.input('前の議題', "value=>{state.agendaItems[0].title=value; markAgendaItemDirty('a1');}");
+  input.fire('focus'); input.fire('compositionstart');
+  input.value='ぎだい'; input.fire('input',{isComposing:true}); a.run('doSave()');
+  assert.equal(a.writes.length,0);
+  input.value='議題の最終全文'; input.fire('compositionend'); input.blur();
+  assert.deepEqual(Object.keys(a.writes.at(-1)),['agendaItems/a1']);
+  assert.equal(a.writes.at(-1)['agendaItems/a1'].title,'議題の最終全文');
+  assert.equal(a.writes.at(-1)['agendaItems/a1'].summary,'概要');
+  assert.equal(a.run('pendingHistoryNotifications.size'),0);
+});
+
+test('agenda deletion removes only its item, preserving histories and debug items', ()=>{
+  const a=app(); a.context.render=()=>{};
+  a.run("state.agendaItems=[{id:'a1',title:'議題'},{id:'a2',title:'別の議題'}]; state.debugIssues=[{id:'d1',title:'問題'}]");
+  vm.runInContext(html.slice(html.indexOf('function findAgendaItem(id)'),html.indexOf('function renderAgendaItems()')),a.context);
+  a.run("const agendaModal={itemId:null}; deleteAgendaItem('a1')");
+  assert.deepEqual(a.writes,[{'agendaItems/a1':null}]);
+  assert.equal(a.run('state.history[0].id'),'h1');
+  assert.equal(a.run('state.debugIssues[0].id'),'d1');
+  assert.equal(a.run('state.agendaItems[0].id'),'a2');
+});
+
+test('server snapshots restore agenda status, dates and overview separately from debug data', ()=>{
+  const a=app();
+  a.context.todayStr=()=>'2026-10-12';
+  vm.runInContext(html.slice(html.indexOf('function applyServerData(data)'),html.indexOf('function isTypingActive()')),a.context);
+  a.context.snapshot={agendaItems:{a1:{title:'議題',summary:'共有する概要',status:'working',openedDate:'2026-10-11',completedDate:'2026-10-13'},a2:{status:'invalid'},removed:null},debugIssues:{d1:{title:'不具合'}}};
+  a.run('applyServerData(snapshot)');
+  assert.equal(a.run('state.agendaItems.length'),2);
+  assert.deepEqual(JSON.parse(a.run('JSON.stringify(state.agendaItems[0])')),{id:'a1',title:'議題',summary:'共有する概要',status:'working',openedDate:'2026-10-11',completedDate:'2026-10-13'});
+  assert.equal(a.run('state.agendaItems[1].status'),'open');
+  assert.equal(a.run('state.debugIssues[0].title'),'不具合');
+  a.run('applyServerData({})');
+  assert.equal(a.run('state.agendaItems.length'),0);
 });

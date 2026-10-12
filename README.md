@@ -130,9 +130,15 @@ Realtime Database Rules
   └─ ログイン済みか判定
        ↓
 Realtime Database
-  └─ tasks / history / milestones / debugIssues などを保存
+  └─ tasks / history / milestones / debugIssues / agendaItems などを保存
 ```
 GitHub Pages deployment enabled.
+
+## 作業履歴とアジェンダシート
+
+作業履歴は上端の境界を上下にドラッグして高さを調整できます。エリア全体の最大高さは画面の3分の1です。三角ボタンで内容を開閉できます。高さと開閉状態は端末で記憶し、閉じた状態で履歴を追加すると自動で展開します。
+
+「アジェンダシート」では議題・要望、対応状況、起票日、完了日を共有できます。議題名を右クリックすると概要を編集できます。議題は `agendaItems` に保存し、選択したタブは端末で記憶します。
 
 ## 7. Discord管理ログ
 

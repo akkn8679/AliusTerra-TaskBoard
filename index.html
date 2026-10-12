@@ -371,14 +371,24 @@
   /* ---------- 作業履歴 ---------- */
   .history-section{
     border:1px solid var(--line-strong);background:#fff;display:flex;flex-direction:column;
+    flex:0 0 auto;min-height:0;height:240px;max-height:33.333vh;max-height:calc(100dvh / 3);overflow:hidden;
   }
+  .history-resizer{height:8px;flex:0 0 8px;cursor:row-resize;touch-action:none;display:flex;align-items:center;justify-content:center;background:var(--header-bg);}
+  .history-resizer::after{content:'';width:42px;height:2px;background:var(--faint);border-radius:2px;}
+  .history-resizer:hover,.history-resizer:focus-visible,.history-section[data-panel-state="RESIZING"] .history-resizer{background:#ddf3e8;outline:2px solid var(--accent);outline-offset:-2px;}
+  .history-heading{display:flex;align-items:center;gap:8px;}
+  .history-toggle{border:0;background:transparent;color:var(--ink);width:28px;height:28px;padding:0;cursor:pointer;font-size:15px;}
+  .history-toggle:hover{background:var(--hover);}
+  .history-content{display:flex;flex:1;min-height:0;flex-direction:column;}
+  .history-section[data-panel-state="COLLAPSED"] .history-resizer,.history-section[data-panel-state="COLLAPSED"] .history-content{display:none;}
+  .history-head{flex-shrink:0;}
   .history-head{
     display:flex;align-items:center;justify-content:space-between;
-    padding:12px 16px;border-bottom:1px solid var(--line-strong);background:var(--header-bg);
+    padding:8px 16px;border-bottom:1px solid var(--line-strong);background:var(--header-bg);
   }
   .history-head h2{margin:0;font-size:13.5px;font-weight:700;color:var(--ink);}
-  .history-notice{margin:0;padding:7px 16px;color:var(--muted);font-size:11px;border-bottom:1px solid var(--line);}
-  .history-table{max-height:280px;overflow:auto;}
+  .history-notice{margin:0;padding:7px 16px;color:var(--muted);font-size:11px;border-bottom:1px solid var(--line);flex-shrink:0;}
+  .history-table{flex:1;min-height:0;overflow:auto;}
   .hhead{
     position:sticky;top:0;z-index:2;background:var(--header-bg);color:var(--ink);
     display:grid;grid-template-columns:minmax(150px,2fr) minmax(110px,1.3fr) 80px 120px 26px 80px;min-width:630px;
@@ -519,6 +529,7 @@
   <div class="section-tabs" role="tablist" aria-label="管理画面">
     <button class="section-tab active" id="taskTabBtn" role="tab" aria-selected="true" aria-controls="taskManagementView">タスク管理</button>
     <button class="section-tab" id="debugTabBtn" role="tab" aria-selected="false" aria-controls="debugSheetView">デバッグシート</button>
+    <button class="section-tab" id="agendaTabBtn" role="tab" aria-selected="false" aria-controls="agendaSheetView">アジェンダシート</button>
     <span class="sync-status" id="syncStatusBadge">接続準備中</span>
   </div>
 
@@ -554,11 +565,16 @@
       <button class="reopen-btn" id="reopenListBtn" title="タスクリストを表示">☰</button>
     </div>
 
-    <div class="history-section">
+    <div class="history-section" id="historySection" data-panel-state="EXPANDED">
+      <div class="history-resizer" id="historyResizer" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="作業履歴の高さを調整" title="上下にドラッグして高さを調整（最大は画面の3分の1）。矢印キーでも調整できます。"></div>
       <div class="history-head">
-        <h2>作業履歴</h2>
+        <div class="history-heading">
+          <button class="history-toggle" id="historyToggleBtn" type="button" aria-expanded="true" aria-controls="historyContent" aria-label="作業履歴を閉じる" title="作業履歴を閉じる"><span aria-hidden="true">▼</span></button>
+          <h2>作業履歴</h2>
+        </div>
         <button class="btn btn-primary" id="addHistoryBtn">＋ 履歴を追加</button>
       </div>
+      <div class="history-content" id="historyContent">
       <p class="history-notice" id="historyRegistrationNotice" role="status">右端の「未登録」を押すとDiscordへ投稿します。登録は投稿受付済みで、反映まで約1分かかります。</p>
       <div class="history-table" id="historyTable">
         <div class="hhead">
@@ -570,6 +586,7 @@
           <span>Discord登録</span>
         </div>
         <div id="historyRows"></div>
+      </div>
       </div>
     </div>
   </div>
@@ -593,6 +610,25 @@
           <span></span>
         </div>
         <div id="debugIssueRows"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="workspace-view" id="agendaSheetView" role="tabpanel" aria-labelledby="agendaTabBtn">
+    <section class="debug-sheet">
+      <div class="debug-sheet-head">
+        <div>
+          <h2>アジェンダシート</h2>
+          <p>議題名を右クリックすると概要を表示・編集できます</p>
+        </div>
+        <button class="btn btn-primary" id="addAgendaItemBtn">＋ 議題を追加</button>
+      </div>
+      <div class="debug-intro">開発における議題や要望を記録し、対応状況と起票・完了の日付を共有します。</div>
+      <div class="debug-table">
+        <div class="debug-grid debug-grid-head">
+          <span>議題・要望</span><span>対応状況</span><span>起票した日付</span><span>完了した日付</span><span></span>
+        </div>
+        <div id="agendaItemRows"></div>
       </div>
     </section>
   </div>
@@ -637,6 +673,22 @@
     <div class="modal-foot">
       <button class="btn btn-danger" id="debugIssueDelete">この問題を削除</button>
       <button class="btn btn-primary" id="debugIssueSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="agendaItemModalOverlay">
+  <div class="modal debug-modal">
+    <div class="modal-head">
+      <span>議題・要望の概要</span><button class="modal-close" id="agendaItemModalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <label>議題・要望<input type="text" id="agendaItemTitle"></label>
+      <label class="memo-label">概要<textarea id="agendaItemSummary" placeholder="背景、要望の内容、検討事項、決定内容などを記録できます"></textarea></label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="agendaItemDelete">この議題を削除</button>
+      <button class="btn btn-primary" id="agendaItemSave">保存</button>
     </div>
   </div>
 </div>
@@ -905,6 +957,8 @@ function stopFirebaseSync(){
   dirtyMilestoneDates.clear();
   dirtyDebugIssueIds.clear();
   deletedDebugIssueIds.clear();
+  dirtyAgendaItemIds.clear();
+  deletedAgendaItemIds.clear();
 
   didFirstRender = false;
   didInitialScroll = false;
@@ -916,6 +970,7 @@ function stopFirebaseSync(){
   state.history = [];
   state.milestones = {};
   state.debugIssues = [];
+  state.agendaItems = [];
 }
 
 function startFirebaseSync(){
@@ -1064,6 +1119,7 @@ let state = {
   history: [],
   milestones: {},
   debugIssues: [],
+  agendaItems: [],
 };
 let currentUser = null;
 let assigneeFilter = null;
@@ -1071,9 +1127,14 @@ let assigneeFilter = null;
 const WORKSPACE_VIEW = Object.freeze({
   TASKS: 'TASKS',
   DEBUG: 'DEBUG',
+  AGENDA: 'AGENDA',
 });
 let currentWorkspaceView = WORKSPACE_VIEW.TASKS;
 const DEBUG_STATUS_OPTIONS = ['未対応', '対応中', '確認待ち', '解決済み'];
+const AGENDA_STATUS_OPTIONS = Object.freeze([
+  {id:'open',label:'未対応'}, {id:'investigating',label:'調査中'}, {id:'working',label:'対応中'},
+  {id:'verifying',label:'確認待ち'}, {id:'resolved',label:'解決済み'},
+]);
 
 /* ===================== Firebaseとの同期（変更があった部分だけ送る） ===================== */
 // タスクは Firebase 上では { id: {...フィールド..., childOrder:[子のid,...]} } というフラットな形で持ち、
@@ -1096,6 +1157,8 @@ let historyNotificationRetryAttempts = 0;
 let dirtyMilestoneDates = new Set();
 let dirtyDebugIssueIds = new Set();
 let deletedDebugIssueIds = new Set();
+const dirtyAgendaItemIds = new Set();
+const deletedAgendaItemIds = new Set();
 let saveTimer = null;
 
 const TEXT_EDIT_STATE = Object.freeze({
@@ -1193,6 +1256,8 @@ function queueHistoryNotification(history, operation = 'saved'){
 function markMilestoneDirty(dateStr){ dirtyMilestoneDates.add(dateStr); }
 function markDebugIssueDirty(id){ if(id) dirtyDebugIssueIds.add(id); }
 function markDebugIssueDeleted(id){ if(id){ deletedDebugIssueIds.add(id); dirtyDebugIssueIds.delete(id); } }
+function markAgendaItemDirty(id){ if(id) dirtyAgendaItemIds.add(id); }
+function markAgendaItemDeleted(id){ if(id){ deletedAgendaItemIds.add(id); dirtyAgendaItemIds.delete(id); } }
 
 function serializeTaskFlat(node){
   const flat = {
@@ -1276,6 +1341,15 @@ function doSave(){
     updates['debugIssues/'+id] = null;
     hasUpdates = true;
   });
+  dirtyAgendaItemIds.forEach(id=>{
+    const item = state.agendaItems.find(item=>item.id===id);
+    updates['agendaItems/'+id] = item || null;
+    hasUpdates = true;
+  });
+  deletedAgendaItemIds.forEach(id=>{
+    updates['agendaItems/'+id] = null;
+    hasUpdates = true;
+  });
 
   dirtyTaskIds.clear();
   deletedTaskIds.clear();
@@ -1286,6 +1360,9 @@ function doSave(){
   dirtyMilestoneDates.clear();
   dirtyDebugIssueIds.clear();
   deletedDebugIssueIds.clear();
+
+  dirtyAgendaItemIds.clear();
+  deletedAgendaItemIds.clear();
 
   if(!hasUpdates) return;
   notificationBatch.forEach((notification, id)=>{
@@ -1618,17 +1695,21 @@ function tintColorFor(task){
 /* ===================== 描画 ===================== */
 function renderWorkspaceView(){
   const isTaskView = currentWorkspaceView === WORKSPACE_VIEW.TASKS;
-  document.getElementById('taskManagementView').classList.toggle('active', isTaskView);
-  document.getElementById('debugSheetView').classList.toggle('active', !isTaskView);
-  document.getElementById('taskTabBtn').classList.toggle('active', isTaskView);
-  document.getElementById('debugTabBtn').classList.toggle('active', !isTaskView);
-  document.getElementById('taskTabBtn').setAttribute('aria-selected', String(isTaskView));
-  document.getElementById('debugTabBtn').setAttribute('aria-selected', String(!isTaskView));
+  const views = [[WORKSPACE_VIEW.TASKS,'taskManagementView','taskTabBtn'],
+    [WORKSPACE_VIEW.DEBUG,'debugSheetView','debugTabBtn'], [WORKSPACE_VIEW.AGENDA,'agendaSheetView','agendaTabBtn']];
+  views.forEach(([view,panelId,buttonId])=>{
+    const active = currentWorkspaceView === view;
+    document.getElementById(panelId).classList.toggle('active', active);
+    document.getElementById(buttonId).classList.toggle('active', active);
+    document.getElementById(buttonId).setAttribute('aria-selected', String(active));
+  });
   document.getElementById('viewbar').style.display = isTaskView ? '' : 'none';
 }
 function changeWorkspaceView(nextView){
   if(!Object.values(WORKSPACE_VIEW).includes(nextView)) return;
+  if(document.activeElement && typeof document.activeElement.blur==='function') document.activeElement.blur();
   currentWorkspaceView = nextView;
+  try{ localStorage.setItem('aliusTerraTaskBoard.workspaceView', nextView); }catch{}
   renderWorkspaceView();
 }
 
@@ -1641,6 +1722,7 @@ function render(){
   renderRight(rows);
   renderHistory();
   renderDebugIssues();
+  renderAgendaItems();
   document.getElementById('todayBadge').textContent = '今日：'+todayStr().replace(/-/g,'/');
 }
 
@@ -2491,7 +2573,106 @@ function onResizeUp(){
 }
 
 /* ===================== 作業履歴 ===================== */
+const HISTORY_PANEL_STATE = Object.freeze({EXPANDED:'EXPANDED', COLLAPSED:'COLLAPSED', RESIZING:'RESIZING'});
+const HISTORY_PANEL_STORAGE_KEY = 'aliusTerraTaskBoard.historyPanel';
+let historyPanel = {state:HISTORY_PANEL_STATE.EXPANDED, preferredHeight:240, resizeStart:null};
+function historyPanelBounds(){
+  const max = Math.max(1, Math.floor(window.innerHeight / 3));
+  return {min:Math.min(160,max), max};
+}
+function clampHistoryPanelHeight(height){
+  const bounds = historyPanelBounds();
+  return Math.max(bounds.min, Math.min(bounds.max, Number.isFinite(height) ? height : 240));
+}
+function saveHistoryPanelPreference(){
+  try{
+    localStorage.setItem(HISTORY_PANEL_STORAGE_KEY, JSON.stringify({
+      state:historyPanel.state === HISTORY_PANEL_STATE.COLLAPSED ? HISTORY_PANEL_STATE.COLLAPSED : HISTORY_PANEL_STATE.EXPANDED,
+      height:historyPanel.preferredHeight,
+    }));
+  }catch{}
+}
+function renderHistoryPanel(){
+  const section = document.getElementById('historySection');
+  const toggle = document.getElementById('historyToggleBtn');
+  const resizer = document.getElementById('historyResizer');
+  const expanded = historyPanel.state !== HISTORY_PANEL_STATE.COLLAPSED;
+  const bounds = historyPanelBounds();
+  const height = clampHistoryPanelHeight(historyPanel.preferredHeight);
+  section.dataset.panelState = historyPanel.state;
+  section.style.height = expanded ? height+'px' : 'auto';
+  toggle.setAttribute('aria-expanded', String(expanded));
+  toggle.setAttribute('aria-label', expanded ? '作業履歴を閉じる' : '作業履歴を展開する');
+  toggle.title = expanded ? '作業履歴を閉じる' : '作業履歴を展開する';
+  toggle.querySelector('span').textContent = expanded ? '▼' : '▶';
+  resizer.setAttribute('aria-valuemin', String(bounds.min));
+  resizer.setAttribute('aria-valuemax', String(bounds.max));
+  resizer.setAttribute('aria-valuenow', String(Math.round(height)));
+}
+function setHistoryPanelExpanded(expanded){
+  const section = document.getElementById('historySection');
+  if(!expanded && section.contains(document.activeElement)) document.activeElement.blur();
+  historyPanel.state = expanded ? HISTORY_PANEL_STATE.EXPANDED : HISTORY_PANEL_STATE.COLLAPSED;
+  renderHistoryPanel();
+  saveHistoryPanelPreference();
+}
+function finishHistoryPanelResize(event){
+  if(historyPanel.state !== HISTORY_PANEL_STATE.RESIZING || historyPanel.resizeStart.pointerId !== event.pointerId) return;
+  const resizer = document.getElementById('historyResizer');
+  document.body.style.userSelect = historyPanel.resizeStart.previousUserSelect;
+  historyPanel.resizeStart = null;
+  historyPanel.state = HISTORY_PANEL_STATE.EXPANDED;
+  if(resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
+  renderHistoryPanel();
+  saveHistoryPanelPreference();
+}
+function initializeHistoryPanel(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(HISTORY_PANEL_STORAGE_KEY) || 'null');
+    if(saved){
+      historyPanel.state = saved.state === HISTORY_PANEL_STATE.COLLAPSED ? HISTORY_PANEL_STATE.COLLAPSED : HISTORY_PANEL_STATE.EXPANDED;
+      if(Number.isFinite(saved.height)) historyPanel.preferredHeight = saved.height;
+    }
+  }catch{}
+  const resizer = document.getElementById('historyResizer');
+  document.getElementById('historyToggleBtn').addEventListener('click', ()=>{
+    setHistoryPanelExpanded(historyPanel.state === HISTORY_PANEL_STATE.COLLAPSED);
+  });
+  resizer.addEventListener('pointerdown', event=>{
+    if(event.button !== 0 || historyPanel.state === HISTORY_PANEL_STATE.COLLAPSED) return;
+    event.preventDefault();
+    const section = document.getElementById('historySection');
+    if(section.contains(document.activeElement)) document.activeElement.blur();
+    historyPanel.resizeStart = {pointerId:event.pointerId, y:event.clientY,
+      height:section.getBoundingClientRect().height, previousUserSelect:document.body.style.userSelect};
+    historyPanel.state = HISTORY_PANEL_STATE.RESIZING;
+    resizer.setPointerCapture(event.pointerId);
+    document.body.style.userSelect = 'none';
+    renderHistoryPanel();
+  });
+  resizer.addEventListener('pointermove', event=>{
+    if(historyPanel.state !== HISTORY_PANEL_STATE.RESIZING || historyPanel.resizeStart.pointerId !== event.pointerId) return;
+    historyPanel.preferredHeight = clampHistoryPanelHeight(historyPanel.resizeStart.height + historyPanel.resizeStart.y - event.clientY);
+    renderHistoryPanel();
+  });
+  resizer.addEventListener('pointerup', finishHistoryPanelResize);
+  resizer.addEventListener('pointercancel', finishHistoryPanelResize);
+  resizer.addEventListener('lostpointercapture', finishHistoryPanelResize);
+  resizer.addEventListener('keydown', event=>{
+    const bounds = historyPanelBounds();
+    const current = clampHistoryPanelHeight(historyPanel.preferredHeight);
+    const heights = {ArrowUp:current+16, ArrowDown:current-16, Home:bounds.min, End:bounds.max};
+    if(!(event.key in heights)) return;
+    event.preventDefault();
+    historyPanel.preferredHeight = clampHistoryPanelHeight(heights[event.key]);
+    renderHistoryPanel();
+    saveHistoryPanelPreference();
+  });
+  window.addEventListener('resize', renderHistoryPanel);
+  renderHistoryPanel();
+}
 function addHistoryEntry(){
+  setHistoryPanelExpanded(true);
   const h = {
     id:newId('h'),
     content:'',
@@ -2517,6 +2698,7 @@ function deleteHistoryEntry(id){
   commit();
 }
 function renderHistory(){
+  renderHistoryPanel();
   const wrap = document.getElementById('historyRows');
   wrap.innerHTML='';
   const sorted = state.history.slice().sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:0);
@@ -2785,6 +2967,134 @@ document.addEventListener('keydown', (event)=>{
   if(event.key==='Escape' && debugIssueModalOverlay.classList.contains('open')) closeDebugIssueModal();
 });
 
+/* ===================== アジェンダシート ===================== */
+const AGENDA_MODAL_STATE = Object.freeze({CLOSED:'CLOSED', EDITING:'EDITING'});
+let agendaModal = {state:AGENDA_MODAL_STATE.CLOSED, itemId:null};
+const agendaItemModalOverlay = document.getElementById('agendaItemModalOverlay');
+const agendaItemTitle = document.getElementById('agendaItemTitle');
+const agendaItemSummary = document.getElementById('agendaItemSummary');
+function findAgendaItem(id){ return state.agendaItems.find(item=>item.id===id) || null; }
+function makeAgendaItem(){
+  return {id:newId('a'), title:'新しい議題', summary:'', status:'open', openedDate:todayStr(), completedDate:''};
+}
+function addAgendaItem(){
+  const item = makeAgendaItem();
+  state.agendaItems.push(item);
+  markAgendaItemDirty(item.id);
+  commit();
+  requestAnimationFrame(()=>{
+    const input = document.querySelector('[data-agenda-item-id="'+item.id+'"] input[type=text]');
+    if(input){ input.focus(); input.select(); }
+  });
+}
+function deleteAgendaItem(id){
+  if(!findAgendaItem(id)) return;
+  if(agendaModal.itemId===id) closeAgendaItemModal();
+  markAgendaItemDeleted(id);
+  state.agendaItems = state.agendaItems.filter(item=>item.id!==id);
+  discardPendingServerData();
+  render();
+  saveImmediately();
+}
+function renderAgendaItems(){
+  const wrap = document.getElementById('agendaItemRows');
+  wrap.innerHTML = '';
+  const items = state.agendaItems.slice().sort((a,b)=>{
+    const aCompleted = a.status==='resolved', bCompleted = b.status==='resolved';
+    if(aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+    return (b.openedDate || '').localeCompare(a.openedDate || '');
+  });
+  if(!items.length){
+    const empty = document.createElement('div');
+    empty.className='debug-empty';
+    empty.textContent='議題はまだ登録されていません。「＋ 議題を追加」から記録できます。';
+    wrap.appendChild(empty);
+    return;
+  }
+  items.forEach(item=>wrap.appendChild(buildAgendaItemRow(item)));
+}
+function buildAgendaItemRow(item){
+  const row = document.createElement('div');
+  row.className='debug-grid debug-issue-row';
+  row.dataset.agendaItemId=item.id;
+  row.title='右クリックで議題・要望の概要を表示・編集';
+  row.addEventListener('contextmenu', event=>{
+    event.preventDefault();
+    event.stopPropagation();
+    openAgendaItemModal(item.id);
+  });
+  const title = document.createElement('input');
+  title.type='text'; title.value=item.title; title.placeholder='議題・要望';
+  bindSynchronizedTextInput(title, value=>{ item.title=value; markAgendaItemDirty(item.id); });
+  row.appendChild(title);
+  const status = document.createElement('select');
+  status.setAttribute('aria-label','議題の対応状況');
+  AGENDA_STATUS_OPTIONS.forEach(({id,label})=>{
+    const option = document.createElement('option');
+    option.value=id; option.textContent=label; option.selected=id===item.status;
+    status.appendChild(option);
+  });
+  status.addEventListener('change', ()=>{
+    item.status=status.value; markAgendaItemDirty(item.id); commit();
+  });
+  row.appendChild(status);
+  const opened = document.createElement('input');
+  opened.type='date'; opened.value=item.openedDate; opened.setAttribute('aria-label','議題の起票日');
+  opened.addEventListener('change', ()=>{ item.openedDate=opened.value || todayStr(); markAgendaItemDirty(item.id); commit(); });
+  row.appendChild(opened);
+  const completed = document.createElement('input');
+  completed.type='date'; completed.value=item.completedDate; completed.setAttribute('aria-label','議題の完了日');
+  completed.addEventListener('change', ()=>{ item.completedDate=completed.value; markAgendaItemDirty(item.id); scheduleSave(); });
+  row.appendChild(completed);
+  const remove = document.createElement('button');
+  remove.className='debug-delete'; remove.title='削除'; remove.textContent='×';
+  remove.addEventListener('contextmenu', event=>event.stopPropagation());
+  remove.addEventListener('click', ()=>deleteAgendaItem(item.id));
+  row.appendChild(remove);
+  return row;
+}
+function openAgendaItemModal(id){
+  if(textEditing.element) finishTextEditing(textEditing.element);
+  const item = findAgendaItem(id);
+  if(!item) return;
+  agendaModal = {state:AGENDA_MODAL_STATE.EDITING, itemId:id};
+  agendaItemTitle.value=item.title;
+  agendaItemSummary.value=item.summary;
+  agendaItemModalOverlay.classList.add('open');
+  setTimeout(()=>agendaItemSummary.focus(),0);
+}
+function closeAgendaItemModal(){
+  if(agendaItemModalOverlay.contains(document.activeElement)) document.activeElement.blur();
+  agendaItemModalOverlay.classList.remove('open');
+  agendaModal = {state:AGENDA_MODAL_STATE.CLOSED, itemId:null};
+}
+function saveAgendaItemModal(){
+  if(agendaModal.state !== AGENDA_MODAL_STATE.EDITING) return;
+  const item = findAgendaItem(agendaModal.itemId);
+  if(!item){ closeAgendaItemModal(); return; }
+  item.title=agendaItemTitle.value.trim() || '新しい議題';
+  item.summary=agendaItemSummary.value;
+  markAgendaItemDirty(item.id);
+  discardPendingServerData();
+  closeAgendaItemModal();
+  render();
+  saveImmediately();
+}
+document.getElementById('agendaTabBtn').addEventListener('click', ()=>changeWorkspaceView(WORKSPACE_VIEW.AGENDA));
+document.getElementById('addAgendaItemBtn').addEventListener('click', addAgendaItem);
+document.getElementById('agendaItemModalClose').addEventListener('click', closeAgendaItemModal);
+document.getElementById('agendaItemSave').addEventListener('click', saveAgendaItemModal);
+document.getElementById('agendaItemDelete').addEventListener('click', ()=>{
+  if(agendaModal.state !== AGENDA_MODAL_STATE.EDITING) return;
+  deleteAgendaItem(agendaModal.itemId);
+});
+agendaItemModalOverlay.addEventListener('click', event=>{
+  if(event.target===agendaItemModalOverlay) closeAgendaItemModal();
+});
+document.addEventListener('keydown', event=>{
+  if(event.key==='Escape' && agendaItemModalOverlay.classList.contains('open')) closeAgendaItemModal();
+});
+
 /* ===================== 最初に担当者を選ぶゲート ===================== */
 const userGateOverlay = document.getElementById('userGateOverlay');
 const userGateButtons = document.getElementById('userGateButtons');
@@ -2881,6 +3191,15 @@ function applyServerData(data){
       resolvedDate: issue.resolvedDate || '',
     };
   }).filter(Boolean);
+
+  const flatAgenda = data && data.agendaItems && typeof data.agendaItems==='object' ? data.agendaItems : {};
+  state.agendaItems = Object.entries(flatAgenda).map(([id,item])=>{
+    if(!item || typeof item!=='object') return null;
+    return {id:item.id || id, title:typeof item.title==='string' ? item.title : '新しい議題',
+      summary:typeof item.summary==='string' ? item.summary : '',
+      status:AGENDA_STATUS_OPTIONS.some(option=>option.id===item.status) ? item.status : 'open',
+      openedDate:item.openedDate || todayStr(), completedDate:item.completedDate || ''};
+  }).filter(Boolean);
 }
 function isTypingActive(){
   const el = document.activeElement;
@@ -2916,6 +3235,11 @@ function firstRenderOnce(){
 
 // Realtime Database同期は Firebase Authentication の onAuthStateChanged から開始する。
 // 未ログイン状態ではタスクデータの読み込み・書き込みを開始しない。
+initializeHistoryPanel();
+try{
+  const savedView = localStorage.getItem('aliusTerraTaskBoard.workspaceView');
+  if(Object.values(WORKSPACE_VIEW).includes(savedView)) currentWorkspaceView=savedView;
+}catch{}
 render();
 </script>
 </body>
