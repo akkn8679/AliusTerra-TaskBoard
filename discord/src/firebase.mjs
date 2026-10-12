@@ -7,7 +7,7 @@ function base64url(bytes){
 function encode(value){ return base64url(new TextEncoder().encode(JSON.stringify(value))); }
 
 export class FirebaseReader {
-  constructor(env, fetcher = fetch){
+  constructor(env, fetcher = fetch.bind(globalThis)){
     this.env = env;
     this.fetcher = fetcher;
     this.token = null;
