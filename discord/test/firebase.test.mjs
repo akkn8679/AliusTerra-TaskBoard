@@ -40,3 +40,25 @@ test('wrong project and invalid destination fail before any credential is sent',
   reader.env.FIREBASE_DATABASE_URL='https://evil.example';
   await assert.rejects(reader.notifications(),/Invalid Firebase/);
 });
+
+test('default fetch keeps the Workers global receiver for OAuth and database requests', async()=>{
+  const originalFetch = globalThis.fetch;
+  const {privateKey}=generateKeyPairSync('rsa',{modulusLength:2048});
+  const env={FIREBASE_PROJECT_ID:'aliusterratasks', FIREBASE_BOARD_PATH:'aliusTerraBoard',
+    FIREBASE_DATABASE_URL:'https://aliusterratasks-default-rtdb.asia-southeast1.firebasedatabase.app',
+    FIREBASE_SERVICE_ACCOUNT:JSON.stringify({project_id:'aliusterratasks',client_email:'reader@example.iam.gserviceaccount.com',
+      private_key:privateKey.export({type:'pkcs8',format:'pem'})})};
+  let calls=0;
+  globalThis.fetch=async function(url){
+    assert.equal(this, globalThis, 'Workers fetch must not receive the FirebaseReader as its receiver');
+    calls++;
+    return String(url)==='https://oauth2.googleapis.com/token'
+      ? Response.json({access_token:'test-bearer',expires_in:3600}) : Response.json(null);
+  };
+  try{
+    assert.deepEqual(await new FirebaseReader(env).notifications(),{});
+    assert.equal(calls,2);
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});
