@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { FirebaseReader } from './firebase.mjs';
-import { HistoryProcessor, sendDiscord } from './notifier.mjs';
+import { HistoryProcessor, sendDiscord, discordWebhookUrl } from './notifier.mjs';
 
 export class HistoryLog extends DurableObject {
   constructor(ctx, env){
@@ -16,6 +16,8 @@ export class HistoryLog extends DurableObject {
     if(!this.env.FIREBASE_SERVICE_ACCOUNT || !this.env.DISCORD_WEBHOOK_URL){
       throw new Error('History notifier secrets have not been configured');
     }
+    // 再試行待ちでも設定形式を確認し、秘密を出さず設定エラーを診断できる。
+    discordWebhookUrl(this.env.DISCORD_WEBHOOK_URL);
     return Response.json(await this.processor.run());
   }
 }

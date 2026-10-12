@@ -43,16 +43,25 @@ export class DeliveryError extends Error {
   }
 }
 
-export async function sendDiscord(env, notification, fetcher = fetch){
+export function discordWebhookUrl(secret){
   let url;
-  try{ url = new URL(env.DISCORD_WEBHOOK_URL); }
+  try{ url = new URL(secret); }
   catch{ throw new Error('Discord webhook secret is missing or invalid'); }
-  if(url.protocol !== 'https:' || url.hostname !== 'discord.com' ||
-    !/^\/api(?:\/v\d+)?\/webhooks\/\d+\/[\w-]+$/.test(url.pathname) || url.username || url.password){
-    throw new Error('Invalid Discord webhook URL');
-  }
+  // 入力したURLやトークンはエラーに含めず、設定の修正箇所だけを示す。
+  if(url.protocol !== 'https:') throw new Error('Invalid Discord webhook URL: HTTPS is required');
+  if(url.hostname !== 'discord.com') throw new Error('Invalid Discord webhook URL: host must be discord.com');
+  if(url.username || url.password) throw new Error('Invalid Discord webhook URL: embedded login credentials are not allowed');
+  const path = /^\/api(?:\/v\d+)?\/webhooks\/([^/]+)\/([^/]+)$/.exec(url.pathname);
+  if(!path) throw new Error('Invalid Discord webhook URL: use the copied webhook URL, not a channel or server link');
+  if(!/^\d+$/.test(path[1])) throw new Error('Invalid Discord webhook URL: webhook ID must be numeric');
+  if(!/^[\w-]+$/.test(path[2])) throw new Error('Invalid Discord webhook URL: webhook token contains unexpected characters');
   url.search = '';
   url.searchParams.set('wait', 'true');
+  return url;
+}
+
+export async function sendDiscord(env, notification, fetcher = fetch){
+  const url = discordWebhookUrl(env.DISCORD_WEBHOOK_URL);
   let response;
   try{
     response = await fetcher(url, {
