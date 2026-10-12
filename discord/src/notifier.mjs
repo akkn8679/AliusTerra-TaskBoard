@@ -4,7 +4,7 @@ function clip(value, max){
 }
 
 export function normalizeNotification(id, value){
-  if(!value || typeof value !== 'object' || typeof value.revision !== 'string' ||
+  if(!value || typeof value !== 'object' || value.trigger !== 'manual' || typeof value.revision !== 'string' ||
     !['saved','deleted'].includes(value.operation) || !value.entry || value.entry.id !== id ||
     !Number.isFinite(value.committedAt) || value.committedAt < 0 || value.committedAt > 8640000000000000) return null;
   const entry = {};
@@ -113,7 +113,7 @@ export class HistoryProcessor {
       const key = 'history:' + notification.entry.id;
       const previous = await this.storage.get(key);
       if(previous?.revision === notification.revision) continue;
-      const signature = JSON.stringify([notification.operation, notification.entry]);
+      const signature = JSON.stringify(['manual', notification.operation, notification.entry]);
       if(previous?.signature === signature || (!previous?.messageId && !notification.entry.content.trim())){
         await this.storage.put(key, {...previous, revision:notification.revision, signature});
         continue;
