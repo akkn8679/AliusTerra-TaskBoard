@@ -133,3 +133,9 @@ Realtime Database
   └─ tasks / history / milestones / debugIssues などを保存
 ```
 GitHub Pages deployment enabled.
+
+## 7. Discord管理ログ
+
+作業履歴の確定保存をDiscord管理ログへ通知するCloudflare Workerを `discord/` に追加しました。
+投稿先はチャンネル専用Webhookで設定します。初期状態は通知無効です。
+初回接続、動作確認、停止方法は [discord/README.md](discord/README.md) を参照してください。

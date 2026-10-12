@@ -886,6 +886,11 @@ function stopFirebaseSync(){
   dirtyRootOrder = false;
   dirtyHistoryIds.clear();
   deletedHistoryIds.clear();
+  pendingHistoryNotifications.clear();
+  latestHistoryNotificationRevisions.clear();
+  clearTimeout(historyNotificationRetryTimer);
+  historyNotificationRetryTimer = null;
+  historyNotificationRetryAttempts = 0;
   dirtyMilestoneDates.clear();
   dirtyDebugIssueIds.clear();
   deletedDebugIssueIds.clear();
@@ -1067,6 +1072,11 @@ let deletedTaskIds = new Set();
 let dirtyRootOrder = false;
 let dirtyHistoryIds = new Set();
 let deletedHistoryIds = new Set();
+// 履歴の確定値だけを通知する。入力中の350ms自動保存は通知しない。
+const pendingHistoryNotifications = new Map();
+const latestHistoryNotificationRevisions = new Map();
+let historyNotificationRetryTimer = null;
+let historyNotificationRetryAttempts = 0;
 let dirtyMilestoneDates = new Set();
 let dirtyDebugIssueIds = new Set();
 let deletedDebugIssueIds = new Set();
@@ -1099,6 +1109,19 @@ function markContainerOwnerDirty(path){
 }
 function markHistoryDirty(id){ if(id) dirtyHistoryIds.add(id); }
 function markHistoryDeleted(id){ if(id){ deletedHistoryIds.add(id); dirtyHistoryIds.delete(id); } }
+function queueHistoryNotification(history, operation = 'saved'){
+  if(!history || !history.id) return;
+  const revision = newId('n');
+  latestHistoryNotificationRevisions.set(history.id, revision);
+  pendingHistoryNotifications.set(history.id, {
+    revision,
+    operation,
+    entry: {id:history.id, content:history.content || '', repo:history.repo || '',
+      assignee:history.assignee || '', date:history.date || ''},
+    actor: currentUser || '',
+    committedAt: firebase.database.ServerValue.TIMESTAMP,
+  });
+}
 function markMilestoneDirty(dateStr){ dirtyMilestoneDates.add(dateStr); }
 function markDebugIssueDirty(id){ if(id) dirtyDebugIssueIds.add(id); }
 function markDebugIssueDeleted(id){ if(id){ deletedDebugIssueIds.add(id); dirtyDebugIssueIds.delete(id); } }
@@ -1142,6 +1165,8 @@ function saveImmediately(){
 function doSave(){
   if(!firebaseReady || !firebaseAuth || !firebaseAuth.currentUser || authState !== AUTH_STATE.DATABASE_READY) return;
   const updates = {};
+  const notificationBatch = new Map(pendingHistoryNotifications);
+  const savingUserId = firebaseAuth.currentUser.uid;
   let hasUpdates = false;
 
   dirtyTaskIds.forEach(id=>{
@@ -1166,6 +1191,10 @@ function doSave(){
     updates['history/'+id] = null;
     hasUpdates = true;
   });
+  notificationBatch.forEach((notification, id)=>{
+    updates['historyNotifications/'+id] = notification;
+    hasUpdates = true;
+  });
   dirtyMilestoneDates.forEach(d=>{
     updates['milestones/'+d] = state.milestones[d] || null;
     hasUpdates = true;
@@ -1185,12 +1214,29 @@ function doSave(){
   dirtyRootOrder = false;
   dirtyHistoryIds.clear();
   deletedHistoryIds.clear();
+  pendingHistoryNotifications.clear();
   dirtyMilestoneDates.clear();
   dirtyDebugIssueIds.clear();
   deletedDebugIssueIds.clear();
 
   if(!hasUpdates) return;
-  boardRef.update(updates).catch(err=> console.error('Firebase書き込みエラー', err));
+  boardRef.update(updates).then(()=>{
+    if(notificationBatch.size) historyNotificationRetryAttempts = 0;
+  }).catch(err=>{
+    console.error('Firebase書き込みエラー', err);
+    // 確定履歴と通知は同時に保存される。失敗時は新しい編集を上書きせず再送する。
+    if(!firebaseAuth.currentUser || firebaseAuth.currentUser.uid !== savingUserId) return;
+    notificationBatch.forEach((notification, id)=>{
+      if(latestHistoryNotificationRevisions.get(id) !== notification.revision || pendingHistoryNotifications.has(id)) return;
+      pendingHistoryNotifications.set(id, notification);
+      if(state.history.some(h=>h.id===id)) markHistoryDirty(id);
+      else markHistoryDeleted(id);
+    });
+    if(pendingHistoryNotifications.size && historyNotificationRetryAttempts < 3){
+      clearTimeout(historyNotificationRetryTimer);
+      historyNotificationRetryTimer = setTimeout(saveImmediately, 5000 * 2**historyNotificationRetryAttempts++);
+    }
+  });
 }
 
 function resetTextEditingState(){
@@ -1206,11 +1252,12 @@ function isSynchronizedTextEditing(){
   return textEditing.state !== TEXT_EDIT_STATE.IDLE &&
     !!textEditing.element && document.body.contains(textEditing.element);
 }
-function beginTextEditing(element, applyValue){
+function beginTextEditing(element, applyValue, onCommit){
   textEditing = {
     state: TEXT_EDIT_STATE.EDITING,
     element,
     applyValue,
+    onCommit,
     lastCommittedValue: element.value,
     hasLocalChanges: false,
   };
@@ -1251,6 +1298,7 @@ function finishTextEditing(element){
     // 既にdebounce保存済みでも、blur時に同じ最終値を再度dirtyにして送る。
     // これにより、編集中に保留した古いFirebase echoを安全に破棄できる。
     applyCurrentTextValue(true);
+    if(typeof textEditing.onCommit === 'function') textEditing.onCommit();
   }
   resetTextEditingState();
 
@@ -1261,23 +1309,23 @@ function finishTextEditing(element){
     applyPendingServerData();
   }
 }
-function bindSynchronizedTextInput(element, applyValue, previewValue){
-  element.addEventListener('focus', ()=> beginTextEditing(element, applyValue));
+function bindSynchronizedTextInput(element, applyValue, previewValue, onCommit){
+  element.addEventListener('focus', ()=> beginTextEditing(element, applyValue, onCommit));
   element.addEventListener('compositionstart', ()=>{
-    if(textEditing.element !== element) beginTextEditing(element, applyValue);
+    if(textEditing.element !== element) beginTextEditing(element, applyValue, onCommit);
     textEditing.state = TEXT_EDIT_STATE.COMPOSING;
     // 変換開始直前のdebounce保存も止め、未確定文字列をdirty stateから送らない。
     clearTimeout(saveTimer);
     saveTimer = null;
   });
   element.addEventListener('input', (event)=>{
-    if(textEditing.element !== element) beginTextEditing(element, applyValue);
+    if(textEditing.element !== element) beginTextEditing(element, applyValue, onCommit);
     if(typeof previewValue === 'function') previewValue(element.value);
     if(textEditing.state === TEXT_EDIT_STATE.COMPOSING || event.isComposing) return;
     if(applyCurrentTextValue(false)) scheduleSave();
   });
   element.addEventListener('compositionend', ()=>{
-    if(textEditing.element !== element) beginTextEditing(element, applyValue);
+    if(textEditing.element !== element) beginTextEditing(element, applyValue, onCommit);
     textEditing.state = TEXT_EDIT_STATE.EDITING;
     if(typeof previewValue === 'function') previewValue(element.value);
     if(applyCurrentTextValue(false)) scheduleSave();
@@ -2370,6 +2418,8 @@ function addHistoryEntry(){
   });
 }
 function deleteHistoryEntry(id){
+  const history = state.history.find(h=>h.id===id);
+  if(history) queueHistoryNotification(history, 'deleted');
   markHistoryDeleted(id);
   state.history = state.history.filter(h=>h.id!==id);
   commit();
@@ -2400,7 +2450,7 @@ function buildHistoryRow(h){
   bindSynchronizedTextInput(contentInput, (value)=>{
     h.content = value;
     markHistoryDirty(h.id);
-  });
+  }, null, ()=> queueHistoryNotification(h));
   row.appendChild(contentInput);
 
   const repoInput = document.createElement('input');
@@ -2410,7 +2460,7 @@ function buildHistoryRow(h){
   bindSynchronizedTextInput(repoInput, (value)=>{
     h.repo = value;
     markHistoryDirty(h.id);
-  });
+  }, null, ()=> queueHistoryNotification(h));
   row.appendChild(repoInput);
 
   const asSel = document.createElement('select');
@@ -2420,7 +2470,12 @@ function buildHistoryRow(h){
     if(a===h.assignee) o.selected=true;
     asSel.appendChild(o);
   });
-  asSel.addEventListener('change', (e)=>{ h.assignee = e.target.value; markHistoryDirty(h.id); scheduleSave(); });
+  asSel.addEventListener('change', (e)=>{
+    h.assignee = e.target.value;
+    markHistoryDirty(h.id);
+    queueHistoryNotification(h);
+    scheduleSave();
+  });
   row.appendChild(asSel);
 
   const dateInput = document.createElement('input');
@@ -2429,6 +2484,7 @@ function buildHistoryRow(h){
   dateInput.addEventListener('change', (e)=>{
     h.date = e.target.value || todayStr();
     markHistoryDirty(h.id);
+    queueHistoryNotification(h);
     commit();
   });
   row.appendChild(dateInput);
