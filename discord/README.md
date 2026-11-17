@@ -24,7 +24,9 @@
 1. Discordのアリウステラサーバーで**管理ログチャンネル**を開き、チャンネルの設定 → 連携サービス → ウェブフックから専用Webhookを作成します。表示される投稿先のサーバー・チャンネルを確認します。Webhook URLが投稿先を指定するのでサーバーID・チャンネルIDの公開設定は不要です。
 2. Google Cloudの `aliusterratasks` プロジェクトで通知用サービスアカウントを用意します。従来のViewerだけでは、新方式の配信結果保存と完了履歴の受付確認を書き込めません。配信結果・通知キューの書き込み、および履歴の `autoRegister` の解除ができる認可を確認してください。Workerのコードは既存ボード内の通知関連パス以外へ書き込みません。既存のAdmin SDKアカウントは使い回しません。
 
-   現行環境では専用アカウントに既存の `roles/firebasedatabase.viewer` と、カスタムロール `projects/aliusterratasks/roles/aliusTerraDiscordDeliveryWriter` を付与しています。追加する更新権限は `firebasedatabase.instances.update` です。専用ロールには既存Viewerに含まれる読み取り権限（`firebase.clients.get/list`、`firebase.projects.get`、`firebasedatabase.instances.get/list`、`resourcemanager.projects.get`）も含めています。データベースの作成・削除権限は付与しません。IAMのデータ更新権限は通知パスだけに限定されるものではないため、Worker側でも書き込み先を明示的に制限しています。
+   現行環境では、ユーザーの明示承認を受けて専用アカウントに標準の `roles/firebasedatabase.admin` を付与し、実際の送信と配信結果の保存を確認しています。この標準ロールにはデータベースの作成・削除権限も含まれます。Worker側では通知関連パスと完了フラグの解除だけを許可し、DBの作成・削除APIは呼びません。
+
+   既存のViewerとカスタムロール `projects/aliusterratasks/roles/aliusTerraDiscordDeliveryWriter` も保持しています。カスタムロールは既存Viewer相当の読み取り権限と `firebasedatabase.instances.update` で構成しています。導入時には、このカスタムロールがIAM診断上は許可されても実際のREST書き込みは401を返しました。標準ロール追加後は成功しています。標準ロールを外して運用できるかは未検証のため、外す場合は配信結果の保存まで再確認してください。
 3. この専用アカウントのJSON鍵を取得し、Cloudflareの `FIREBASE_SERVICE_ACCOUNT` SecretとしてJSON全文を保存します。鍵は公開リポジトリの外で扱います。
 4. `discord/` で `npm ci` を実行し、`npx wrangler login` でCloudflareの公開用ログインを済ませます。
 5. `npm run check` → `npm run deploy`。Worker名は `aliusterra-discord-history`。SQLite Durable Objectと毎分Cronは設定ファイルから作成されます。`workers.dev`とプレビューURLは無効です。
