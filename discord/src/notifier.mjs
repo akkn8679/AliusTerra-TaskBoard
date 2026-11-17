@@ -26,7 +26,7 @@ export function discordPayload(notification, boardUrl){
       description:clip(h.content.trim() || '（作業内容を空欄に変更）', 3500),
       fields:[
         {name:'担当者', value:clip(h.assignee || '未設定', 200), inline:true},
-        {name:'分類', value:clip(h.repo || '未設定', 200), inline:true},
+        {name:'作業ブランチ', value:clip(h.repo || '未設定', 200), inline:true},
         {name:'作業日', value:clip(h.date || '未設定', 100), inline:true},
         {name:'操作したメンバー', value:clip(notification.actor || '未設定', 200), inline:true},
       ],
@@ -39,6 +39,7 @@ export function discordPayload(notification, boardUrl){
 export class DeliveryError extends Error {
   constructor(status, retryAfter = 0){
     super('Discord delivery failed: HTTP ' + status);
+    this.status = status;
     this.retryAfter = retryAfter;
   }
 }
@@ -62,7 +63,7 @@ export function discordWebhookUrl(secret){
   return url;
 }
 
-export async function sendDiscord(env, notification, fetcher = fetch){
+export async function sendDiscord(env, notification, fetcher = fetch.bind(globalThis)){
   const url = discordWebhookUrl(env.DISCORD_WEBHOOK_URL);
   let response;
   try{

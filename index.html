@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alius-Terra｜開発工程表</title>
+<script src="theme.js?v=parity-20261118"></script>
+<title>Alius-Terra 開発管理ツール</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&family=DotGothic16&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
+    color-scheme:light;
     --bg:#f7f7f7;
     --panel:#ffffff;
     --ink:#242424;
@@ -35,9 +37,33 @@
     --sub-row-h:33px;
     --subsub-row-h:22px;
     --day-w:23px;
-    --left-w:460px;
+    --left-w:664px;
+    --control-bg:#e4e4e4;
+    --control-hover:#dadada;
+    --control-ink:#5c5c5c;
+    --task-ink:#000000;
+    --completed-ink:rgba(0,0,0,.45);
+    --sub-ink:#8a8a8a;
+    --depth-1-bg:#f2f2f2;
+    --depth-2-bg:#d8d8d8;
+    --milestone-bg:#fafafa;
+    --select-arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='m1 1 4 4 4-4' fill='none' stroke='%235c5c5c' stroke-width='1.5'/%3E%3C/svg%3E");
+  }
+  :root[data-theme=dark]{
+    color-scheme:dark;
+    --bg:#151a22;--panel:#202733;--ink:#e6edf5;--muted:#b1bdcc;--faint:#8b98aa;
+    --line:#343e4c;--line-strong:#526074;--header-bg:#293341;--header-bg-2:#323e4e;
+    --hover:#2c3848;--weekend:#29313f;--day-line:#647186;--tree-line:#8290a4;
+    --accent:#4dd6a0;--today-line:#4dd6a0;
+    --urgency-green-dark:#68ce77;--urgency-red-dark:#ff819e;
+    --urgency-yellow-dark:#e2ba4f;--urgency-gray-dark:#8490a2;
+    --control-bg:#394657;--control-hover:#46566b;--control-ink:#e1e8f1;
+    --task-ink:#edf2f8;--completed-ink:#99a7ba;--sub-ink:#b7c4d6;
+    --depth-1-bg:#273140;--depth-2-bg:#303d4e;--milestone-bg:#252e3c;
+    --select-arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='m1 1 4 4 4-4' fill='none' stroke='%23e1e8f1' stroke-width='1.5'/%3E%3C/svg%3E");
   }
   *{box-sizing:border-box;}
+  button{border-radius:8px;}
   html,body{
     margin:0;padding:0;height:100%;
     background:var(--bg);
@@ -48,35 +74,48 @@
   ::selection{background:var(--accent);color:#fff;}
 
   .app{
-    display:flex;flex-direction:column;height:100vh;
-    padding:18px 22px 22px;
+    display:flex;flex-direction:column;min-height:100vh;
+    padding:18px 22px 0;
     gap:14px;
   }
 
   /* ---------- header ---------- */
-  .topbar{
-    display:flex;align-items:flex-end;justify-content:space-between;
-    flex-wrap:wrap;gap:10px;
+  .page-header{display:flex;flex-direction:column;gap:9px;flex-shrink:0;}
+  .header-cover{
+    --cover-height:clamp(140px,min(18vw,27vh),220px);
+    position:relative;height:var(--cover-height);overflow:hidden;overflow:clip;
+    border:1px solid var(--line);border-radius:12px;background:var(--panel);
   }
-  .brand{display:flex;flex-direction:column;gap:2px;}
-  .brand .logo{
-    font-family:'DotGothic16',monospace;
-    font-size:24px;letter-spacing:1px;color:var(--ink);
-    display:flex;align-items:center;gap:8px;
+  .header-logo{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px;padding:12px;}
+  .project-logo-art{display:block;aspect-ratio:1366 / 486;}
+  .project-logo-art img{display:block;width:100%;height:100%;object-fit:contain;}
+  .header-logo-art{width:min(100%,560px);min-height:0;flex:1;}
+  .header-logo-title{margin:0;font-size:clamp(15px,2vw,20px);line-height:1.3;letter-spacing:.1em;}
+  .page-footer{display:flex;justify-content:center;padding-bottom:18px;}
+  .footer-logo{width:140px;padding:0;border:0;background:transparent;cursor:pointer;}
+  .footer-logo:hover{filter:brightness(1.08);}
+  .footer-logo:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+  .topbar-actions{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  .theme-toggle,.sync-status{
+    display:inline-grid;place-items:center;flex:none;width:30px;height:30px;padding:0;
+    border:1px solid var(--line-strong);border-radius:7px;background:var(--panel);color:var(--muted);
+    font:700 16px/1 'Noto Sans JP',sans-serif;
   }
-  .brand .logo .dot{width:9px;height:9px;background:var(--accent);display:inline-block;}
-  .brand .sub{font-size:11.5px;color:var(--muted);letter-spacing:.2px;}
+  .theme-toggle{cursor:pointer;}
+  .theme-toggle:hover{background:var(--hover);color:var(--ink);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  select option{background:var(--panel);color:var(--ink);}
 
   .viewbar{
-    display:flex;gap:0;background:#fff;border:1px solid var(--line-strong);
+    display:flex;flex-wrap:wrap;gap:2px;padding:2px;background:var(--panel);
+    border:1px solid var(--line-strong);border-radius:10px;
   }
   .viewbar button{
     border:none;background:transparent;color:var(--muted);
     font-family:'Noto Sans JP',sans-serif;font-weight:600;font-size:12px;
     padding:8px 13px;cursor:pointer;transition:.1s;
-    white-space:nowrap;border-right:1px solid var(--line);
+    white-space:nowrap;
   }
-  .viewbar button:last-child{border-right:none;}
   .viewbar button:hover{background:var(--hover);color:var(--ink);}
   .viewbar button.active{background:var(--accent);color:#fff;}
 
@@ -88,55 +127,62 @@
   }
   .btn-primary{background:var(--accent);color:#fff;}
   .btn-primary:hover{background:#0c8f57;}
-  .btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line-strong);}
+  .btn-ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);}
   .btn-ghost:hover{background:var(--hover);}
-  .btn-danger{border:1px solid #c0574a;color:#c0574a;background:#fff;}
+  .btn-danger{border:1px solid #c0574a;color:#c0574a;background:var(--panel);}
   .btn-danger:hover{background:#fbecea;}
-  .assignee-filter{display:flex;gap:8px;}
+  .assignee-filter{display:flex;gap:8px;padding-left:10px;border-left:1px solid var(--line-strong);}
   .assignee-filter-btn{
-    font-family:'Noto Sans JP',sans-serif;font-weight:700;font-size:12px;
-    border:2px solid var(--line-strong);background:#eef0f1;color:var(--muted);
-    width:34px;height:34px;border-radius:50%;
+    --avatar-bg:#176a5f;
+    font:800 14px 'Noto Sans JP',sans-serif;
+    border:2px solid var(--panel);background:var(--avatar-bg);color:#fff;
+    box-shadow:0 0 0 1px var(--avatar-bg);
+    width:36px;height:36px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
     cursor:pointer;transition:.1s;padding:0;flex-shrink:0;
   }
-  .assignee-filter-btn:hover{background:var(--hover);border-color:var(--muted);color:var(--ink);}
-  .assignee-filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .assignee-filter-btn:nth-child(3n+2){--avatar-bg:#455b9a;}
+  .assignee-filter-btn:nth-child(3n){--avatar-bg:#873b69;}
+  .assignee-filter-btn:hover{filter:brightness(1.18);}
+  .assignee-filter-btn.active{box-shadow:0 0 0 2px var(--ink);}
+  .assignee-filter-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
   .today-badge{
     font-size:12px;color:var(--muted);margin-left:auto;
-    background:#fff;border:1px solid var(--line);padding:7px 10px;
+    background:var(--panel);border:1px solid var(--line);padding:7px 10px;
   }
+  .sync-status.online{color:#137a4e;border-color:#79b99d;background:#eef9f4;}
+  .sync-status.syncing{color:#8a6512;border-color:#d7bd73;background:#fff9e8;}
+  .sync-status.local{color:#666;border-color:#bbb;background:#f4f4f4;}
+  .sync-status.error{color:#a53b31;border-color:#d08b84;background:#fff0ee;}
 
-  .section-tabs{
-    display:flex;align-items:flex-end;border-bottom:1px solid var(--line-strong);
-    min-height:44px;
+  /* ---------- 開発管理タブ ---------- */
+  .tool-workspace{
+    display:flex;flex-direction:column;gap:14px;padding-bottom:22px;
+    height:100vh;height:100dvh;
   }
-  .section-tab{
-    min-width:138px;border:none;border-bottom:3px solid transparent;background:transparent;
-    color:var(--muted);font-family:'Noto Sans JP',sans-serif;font-size:14px;font-weight:700;
-    padding:11px 18px 10px;cursor:pointer;transition:.1s;
+  .tool-workspace:has(#taskTabPanel.active){height:auto;min-height:100vh;min-height:100dvh;}
+  .tool-tabs-bar{position:sticky;top:0;z-index:30;flex-shrink:0;background:var(--bg);}
+  .tool-tabs{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line-strong);}
+  .tool-tab{
+    border:none;border-bottom:3px solid transparent;background:transparent;color:var(--muted);
+    font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;
+    padding:9px 18px 8px;cursor:pointer;
   }
-  .section-tab:hover{background:var(--hover);color:var(--ink);}
-  .section-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:#fff;}
-  .sync-status{
-    margin:0 0 6px auto;padding:7px 11px;border:1px solid var(--line-strong);
-    background:#fff;color:var(--muted);font-size:11.5px;font-weight:700;white-space:nowrap;
-  }
-  .sync-status.ready{border-color:#79b99d;background:#effaf5;color:#08784a;}
-  .workspace-view{display:none;}
-  .workspace-view.active{
-    display:flex;flex:1;min-height:0;flex-direction:column;gap:14px;
-  }
-
+  .tool-tab:hover{background:var(--hover);color:var(--ink);}
+  .tool-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--panel);}
+  .tool-panel{display:none;flex:1;min-height:0;flex-direction:column;gap:14px;}
+  .tool-panel.active{display:flex;}
+  #taskTabPanel{gap:28px;}
   /* ---------- board ---------- */
   .board{
-    flex:1;display:flex;border:1px solid var(--line-strong);
-    overflow:hidden;background:#fff;
-    min-height:0;position:relative;
+    --task-columns:20px minmax(130px,1fr) minmax(90px,.65fr) 82px 58px 72px 24px;
+    flex:1;display:flex;min-height:0;
+    overflow:hidden;background:var(--panel);
+    position:relative;
   }
   .panel-left{
     width:var(--left-w);min-width:220px;
-    overflow-y:auto;overflow-x:hidden;
+    overflow-y:auto;overflow-x:auto;
     background:var(--panel);
   }
   .panel-resizer{
@@ -152,10 +198,11 @@
   .panel-left::-webkit-scrollbar-thumb,.panel-right::-webkit-scrollbar-thumb{
     background:var(--line-strong);
   }
+  .panel-left::-webkit-scrollbar-corner,.panel-right::-webkit-scrollbar-corner{background:var(--panel);}
   .board.list-collapsed .panel-left,.board.list-collapsed .panel-resizer{display:none;}
   .reopen-btn{
     display:none;position:absolute;top:8px;left:8px;z-index:15;
-    width:28px;height:28px;background:#fff;border:1px solid var(--line-strong);
+    width:28px;height:28px;background:var(--panel);border:1px solid var(--line-strong);
     cursor:pointer;align-items:center;justify-content:center;color:var(--muted);font-size:13px;
   }
   .reopen-btn:hover{background:var(--hover);color:var(--ink);}
@@ -165,22 +212,37 @@
   .lhead{
     position:sticky;top:0;z-index:5;background:var(--header-bg);color:var(--ink);
     border-bottom:1px solid var(--line-strong);
-    display:grid;grid-template-columns:20px 1fr 82px 72px;
+    display:grid;grid-template-columns:var(--task-columns);min-width:624px;
     align-items:center;height:66px;font-size:10.5px;font-weight:700;
     letter-spacing:.3px;padding:0 8px 0 6px;gap:4px;
   }
   .lhead span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
-  .lhead span.name-h{text-align:left;padding-left:2px;}
+  .section-heading-group{display:flex;align-items:center;gap:5px;}
+  .lhead .task-name-heading{grid-column:2;padding-left:2px;text-align:left;}
+  .section-heading{margin:0;font:700 13.5px 'Noto Sans JP',sans-serif;letter-spacing:normal;color:var(--ink);}
+  .detail-info{
+    display:inline-grid;place-items:center;flex:none;width:17px;height:17px;padding:0;
+    border:1px solid currentColor;border-radius:50%;background:var(--panel);color:var(--muted);
+    font:700 11px/1 sans-serif;cursor:default;
+  }
+  .detail-info:hover,.detail-info:focus-visible{color:var(--ink);}
+  .row-detail-hint{
+    position:fixed;inset:auto;top:var(--hint-top);left:clamp(8px,var(--hint-left),calc(100vw - 232px));
+    margin:0;max-width:calc(100vw - 16px);padding:8px 11px;
+    border:1px solid var(--line-strong);border-radius:8px;background:var(--panel);color:var(--ink);
+    box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:12px;pointer-events:none;
+  }
+  .row-detail-hint.above{transform:translateY(-100%);}
   .collapse-btn{
     width:20px;height:20px;border:none;background:transparent;cursor:pointer;
-    color:var(--muted);font-size:11px;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:11px;display:flex;align-items:center;justify-content:center;justify-self:center;
   }
   .collapse-btn:hover{background:var(--line-strong);color:var(--ink);}
 
   #leftRows{position:relative;}
 
   .lrow{
-    display:grid;grid-template-columns:20px 1fr 82px 72px;
+    display:grid;grid-template-columns:var(--task-columns);min-width:624px;
     align-items:stretch;height:var(--row-h);
     border-bottom:1px solid var(--line);gap:4px;padding:0 8px 0 6px;
     cursor:default;position:relative;
@@ -188,8 +250,8 @@
   .lrow:hover{background:var(--hover);}
   .lrow.dragging{opacity:.35;}
   .lrow.completed-boundary{border-top:4px solid #9a9a9a;}
-  .depth-1{background:#f2f2f2;height:var(--sub-row-h);}
-  .depth-2{background:#d8d8d8;height:var(--subsub-row-h);}
+  .depth-1{background:var(--depth-1-bg);height:var(--sub-row-h);}
+  .depth-2{background:var(--depth-2-bg);height:var(--subsub-row-h);}
 
   .add-below-zone{
     position:absolute;left:0;right:0;bottom:0;height:7px;cursor:pointer;
@@ -214,14 +276,14 @@
   .name-cell{display:flex;align-items:center;gap:0;min-width:0;height:100%;}
   .name-input{
     border:none;background:transparent;font-family:'Noto Sans JP',sans-serif;
-    font-size:12.5px;font-weight:600;color:#000000;width:100%;height:auto;
+    font-size:12.5px;font-weight:600;color:var(--task-ink);width:100%;height:auto;
     line-height:15px;padding:2px 4px;
   }
   .name-input.sub-name{font-weight:700;}
-  .name-input.subsub-name{font-weight:500;color:#8a8a8a;}
-  .name-input.name-completed{color:rgba(0,0,0,.45);}
-  .name-input:hover{background:#fff;box-shadow:0 0 0 1px var(--line-strong) inset;}
-  .name-input:focus{background:#fff;outline:1px solid var(--accent);outline-offset:-1px;}
+  .name-input.subsub-name{font-weight:500;color:var(--sub-ink);}
+  .name-input.name-completed{color:var(--completed-ink);}
+  .name-input:hover{background:var(--panel);box-shadow:0 0 0 1px var(--line-strong) inset;}
+  .name-input:focus{background:var(--panel);outline:1px solid var(--accent);outline-offset:-1px;}
 
   .depth-tick{width:14px;height:100%;position:relative;flex-shrink:0;}
   .depth-tick::before{
@@ -231,34 +293,32 @@
     content:'';position:absolute;left:6px;top:50%;width:8px;height:2px;background:var(--tree-line);
   }
 
-  select.mini{font-family:'Noto Sans JP',sans-serif;}
-  select.mini{
-    appearance:none;-webkit-appearance:none;-moz-appearance:none;
-    font-size:11px;font-weight:600;border:none;padding:0;margin:0;
-    background:transparent;color:var(--ink);width:100%;height:100%;cursor:pointer;
-    text-align:center;text-align-last:center;align-self:stretch;
+  .select-pill{
+    appearance:none;font:600 10.5px 'Noto Sans JP',sans-serif;min-width:0;width:100%;height:26px;
+    align-self:center;border:0;border-radius:999px;color:var(--control-ink);background-color:var(--control-bg);
+    background-image:var(--select-arrow);background-repeat:no-repeat;background-position:right 9px center;
+    background-size:10px 6px;padding:3px 25px 3px 11px;cursor:pointer;text-overflow:ellipsis;
   }
-  select.mini:hover{background:var(--line);}
-  select.mini:focus{outline:1px solid var(--accent);outline-offset:-1px;}
+  .select-pill:hover{background-color:var(--control-hover);}
+  .select-pill:focus{outline:1px solid var(--accent);outline-offset:1px;}
+  .depth-2 .select-pill{height:20px;padding-block:0;}
+  .task-assignee-select{padding-inline:8px 18px;background-position:right 5px center;background-size:8px 5px;}
 
   .progress-cell{display:flex;align-items:center;justify-content:center;height:100%;}
   .progress-select{
-    appearance:none;-webkit-appearance:none;-moz-appearance:none;
-    font-family:'Noto Sans JP',sans-serif;
-    font-size:10.5px;font-weight:600;border:none;cursor:pointer;
-    border-radius:999px;width:auto;
+    width:auto;
     padding:4px 10px 4px 20px;
-    color:#5c5c5c;background-color:#e4e4e4;
     background-image:radial-gradient(circle 3px at 10px 50%, #8a8a8a 99%, transparent 100%);
-    background-repeat:no-repeat;
+    background-size:auto;background-position:center;
     text-align:left;text-align-last:left;
   }
-  .progress-select:focus{outline:1px solid var(--accent);outline-offset:1px;}
   .progress-select.progress-complete{
     color:var(--accent);background-color:#e0f5ea;
     background-image:radial-gradient(circle 3px at 10px 50%, var(--accent) 99%, transparent 100%);
   }
-
+  .priority-select{padding:3px 8px;background-image:none;font-size:11px;align-self:center;justify-self:center;width:52px;max-height:26px;}
+  .priority-select[data-priority=high]{color:#aa3445;background-color:#ffe7ec;}
+  .priority-select[data-priority=low]{color:#336ca5;background-color:#e8f2fc;}
   .empty-hint{
     padding:36px 20px;text-align:center;color:var(--faint);font-size:13px;line-height:1.8;
   }
@@ -274,28 +334,29 @@
     border-right:1px solid var(--line);letter-spacing:.3px;
   }
   .rhead-day{
-    display:flex;height:26px;background:#fff;border-bottom:1px solid var(--line-strong);
+    display:flex;height:26px;background:var(--panel);border-bottom:1px solid var(--line-strong);
   }
   .rhead-day .d{
     width:var(--day-w);min-width:var(--day-w);color:var(--ink);font-size:13px;font-weight:600;
     display:flex;align-items:center;justify-content:center;
-    border-right:1px solid var(--line);background:#fff;
+    border-right:1px solid var(--line);background:var(--panel);
   }
   .rhead-day .d.weekend{background:var(--weekend);}
   .rhead-day .d.is-today{background:var(--accent);color:#fff;font-weight:700;}
 
   .rhead-milestone{
-    display:flex;height:18px;background:#fff;border-bottom:2px solid var(--line-strong);
+    display:flex;height:18px;background:var(--panel);border-bottom:2px solid var(--line-strong);
   }
   .rhead-milestone .mcell{
     width:var(--day-w);min-width:var(--day-w);border-right:1px solid var(--line);
-    cursor:pointer;font-size:9px;font-weight:600;color:#242424;
+    cursor:pointer;font-size:9px;font-weight:600;color:var(--ink);
     display:flex;align-items:center;justify-content:center;
-    overflow:hidden;white-space:nowrap;background:#fafafa;
+    overflow:hidden;white-space:nowrap;background:var(--milestone-bg);
   }
   .rhead-milestone .mcell:hover{outline:1px solid var(--accent);outline-offset:-1px;}
 
-  .rbody{position:relative;background:#fff;}
+  .rhead-milestone .mcell.has-color{color:#242424;}
+  .rbody{position:relative;background:var(--panel);}
   .stripe{position:absolute;top:0;background:var(--weekend);}
   .daysep{position:absolute;top:0;width:1px;background:var(--day-line);opacity:.55;}
   .subrow-band{position:absolute;left:0;background:rgba(0,0,0,.03);}
@@ -314,7 +375,7 @@
   .bar.sub{border-radius:0;}
   .bar.sub-parent{border-radius:4px 4px 0 0;}
   .bar.subsub{filter:brightness(1.12) saturate(.95);}
-  .bar.main{font-weight:700;border-radius:4px;border-width:2px;border-style:solid;background:#ffffff;}
+  .bar.main{font-weight:700;border-radius:4px;border-width:2px;border-style:solid;background:var(--panel);color:var(--ink);}
   .bar.main-parent{border-radius:4px 4px 0 0;}
   .bar:active{cursor:grabbing;}
   .bar .handle{
@@ -330,20 +391,20 @@
   .bar-yellow{background:rgba(var(--urgency-yellow-rgb),1);}
   .bar-gray{background:rgba(var(--urgency-gray-rgb),1);}
   /* メインタスクは不透明な白塗り＋進捗/締切に応じた濃い色の縁取り（締切超過だけは塗りも赤に） */
-  .bar.main.bar-yellow{border-color:var(--urgency-yellow-dark);background:#ffffff;}
-  .bar.main.bar-gray{border-color:var(--urgency-gray-dark);background:#ffffff;}
-  .bar.main.bar-green{border-color:var(--urgency-green-dark);background:#ffffff;}
+  .bar.main.bar-yellow{border-color:var(--urgency-yellow-dark);background:var(--panel);}
+  .bar.main.bar-gray{border-color:var(--urgency-gray-dark);background:var(--panel);}
+  .bar.main.bar-green{border-color:var(--urgency-green-dark);background:var(--panel);}
   .bar.main.bar-red{border-color:var(--urgency-red-dark);background:rgba(var(--urgency-red-rgb),1);color:#fff;}
 
   /* 手動で色を選んだタスク（右クリックの色選択） */
   .ctx-menu{
-    position:fixed;background:#fff;border:1px solid var(--line-strong);
+    position:fixed;background:var(--panel);border:1px solid var(--line-strong);
     box-shadow:0 6px 18px -8px rgba(0,0,0,.3);z-index:100;min-width:130px;
   }
   .color-menu{padding:8px;}
   .color-grid{display:grid;grid-template-columns:repeat(4,24px);gap:8px;padding:2px 2px 8px;}
   .color-swatch{
-    width:24px;height:24px;border-radius:50%;border:2px solid #fff;
+    width:24px;height:24px;border-radius:50%;border:2px solid var(--panel);
     box-shadow:0 0 0 1px var(--line-strong);cursor:pointer;padding:0;
   }
   .color-swatch:hover{box-shadow:0 0 0 2px var(--muted);}
@@ -357,6 +418,7 @@
 
   .milestone-editor{padding:10px;width:200px;}
   .milestone-input{
+    background:var(--panel);
     width:100%;border:1px solid var(--line-strong);padding:7px 8px;font-size:12.5px;
     font-family:'Noto Sans JP',sans-serif;margin-bottom:8px;color:var(--ink);
   }
@@ -368,35 +430,36 @@
   }
   footer.note b{color:var(--muted);}
 
-  /* ---------- 作業履歴 ---------- */
-  .history-section{
-    border:1px solid var(--line-strong);background:#fff;display:flex;flex-direction:column;
-    flex:0 0 auto;min-height:0;height:240px;max-height:33.333vh;max-height:calc(100dvh / 3);overflow:hidden;
+  /* ---------- 開閉できるタスク・作業履歴エリア ---------- */
+  .board-section{
+    border:1px solid var(--line-strong);background:var(--panel);display:flex;flex-direction:column;
+    height:var(--section-height,240px);
+    flex-shrink:0;min-height:0;overflow:hidden;
   }
-  .history-resizer{height:8px;flex:0 0 8px;cursor:row-resize;touch-action:none;display:flex;align-items:center;justify-content:center;background:var(--header-bg);}
-  .history-resizer::after{content:'';width:42px;height:2px;background:var(--faint);border-radius:2px;}
-  .history-resizer:hover,.history-resizer:focus-visible,.history-section[data-panel-state="RESIZING"] .history-resizer{background:#ddf3e8;outline:2px solid var(--accent);outline-offset:-2px;}
-  .history-heading{display:flex;align-items:center;gap:8px;}
-  .history-toggle{border:0;background:transparent;color:var(--ink);width:28px;height:28px;padding:0;cursor:pointer;font-size:15px;}
-  .history-toggle:hover{background:var(--hover);}
-  .history-content{display:flex;flex:1;min-height:0;flex-direction:column;}
-  .history-section[data-panel-state="COLLAPSED"] .history-resizer,.history-section[data-panel-state="COLLAPSED"] .history-content{display:none;}
-  .history-head{flex-shrink:0;}
-  .history-head{
+  .board-section.collapsed{height:auto;}
+  .board-section.collapsed .section-resizer,.board-section.collapsed .task-tools > :not(#addRootBtn){display:none;}
+  .board-section.collapsed #addRootBtn{margin-left:auto;}
+  .section-resizer{height:7px;flex-shrink:0;cursor:row-resize;touch-action:none;background:var(--line);}
+  .section-resizer:hover,.section-resizer:focus{background:var(--accent);outline:none;}
+  .history-content{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden;}
+  .board[hidden],.history-content[hidden]{display:none;}
+  .section-toggle{border:0;background:transparent;font:inherit;cursor:pointer;color:inherit;padding:5px 7px;}
+  .section-toggle:hover{background:var(--hover);}
+  .board-section-head{
     display:flex;align-items:center;justify-content:space-between;
-    padding:8px 16px;border-bottom:1px solid var(--line-strong);background:var(--header-bg);
+    gap:8px;padding:5px 12px;border-bottom:1px solid var(--line-strong);background:var(--header-bg);flex-shrink:0;
   }
-  .history-head h2{margin:0;font-size:13.5px;font-weight:700;color:var(--ink);}
-  .history-notice{margin:0;padding:7px 16px;color:var(--muted);font-size:11px;border-bottom:1px solid var(--line);flex-shrink:0;}
-  .history-table{flex:1;min-height:0;overflow:auto;}
+  .task-section-head{flex-wrap:wrap;}
+  .task-tools{flex:1;}
+  .history-table{min-height:0;overflow:auto;flex:1;}
   .hhead{
     position:sticky;top:0;z-index:2;background:var(--header-bg);color:var(--ink);
-    display:grid;grid-template-columns:minmax(150px,2fr) minmax(110px,1.3fr) 80px 120px 26px 80px;min-width:630px;
+    display:grid;grid-template-columns:minmax(160px,2fr) minmax(100px,1.3fr) 100px 130px 96px 26px;
     font-size:10.5px;font-weight:700;padding:9px 12px;gap:8px;
     border-bottom:1px solid var(--line-strong);
   }
   .hrow{
-    display:grid;grid-template-columns:minmax(150px,2fr) minmax(110px,1.3fr) 80px 120px 26px 80px;min-width:630px;
+    display:grid;grid-template-columns:minmax(160px,2fr) minmax(100px,1.3fr) 100px 130px 96px 26px;
     align-items:center;gap:8px;padding:0 12px;height:38px;
     border-bottom:1px solid var(--line);
   }
@@ -406,76 +469,68 @@
     font-size:12px;color:var(--ink);width:100%;height:100%;padding:0 4px;
   }
   .hrow input[type=text]:hover,.hrow input[type=text]:focus{
-    background:#fff;box-shadow:0 0 0 1px var(--line-strong) inset;
+    background:var(--panel);box-shadow:0 0 0 1px var(--line-strong) inset;
   }
-  .hrow select,.hrow input[type=date]{
+  .hrow input[type=date]{
     border:none;background:transparent;font-family:'Noto Sans JP',sans-serif;
     font-size:11.5px;color:var(--ink);width:100%;height:100%;cursor:pointer;
   }
-  .hrow select:hover,.hrow input[type=date]:hover{background:var(--line);}
+  .hrow input[type=date]:hover{background:var(--line);}
   .history-empty{padding:22px;text-align:center;color:var(--faint);font-size:12.5px;}
   .hrow .icon-del{
     border:none;background:transparent;color:var(--faint);font-size:13px;cursor:pointer;
     width:22px;height:22px;display:flex;align-items:center;justify-content:center;
   }
   .hrow .icon-del:hover{color:#c0574a;background:var(--hover);}
-  .history-registration{height:27px;border:1px solid var(--line-strong);border-radius:5px;background:#fff;color:var(--ink);font:inherit;font-size:11px;cursor:pointer;}
-  .history-registration:hover:not(:disabled){background:var(--hover);border-color:var(--accent);}
-  .history-registration[data-state="REGISTERED"]{background:#edf7f1;color:#287349;border-color:#b9dcc8;}
-  .history-registration[data-state="ERROR"]{color:#a84936;border-color:#daab9f;}
-  .history-registration:disabled{cursor:default;}
-  .history-registration[data-state="REGISTERING"]{opacity:.65;}
+  .history-discord-btn{
+    border:1px solid #9abfe8;background:#e7f1ff;color:#1b5faa;
+    font:600 11px 'Noto Sans JP',sans-serif;padding:4px 6px;cursor:pointer;
+  }
+  .history-discord-btn[data-registration=sent],.history-discord-btn[data-registration=pending]{
+    color:#27714d;background:#edf8f0;border-color:#9bceb0;
+  }
+  .history-discord-btn[data-registration=error],.history-discord-btn[data-registration=uncertain]{
+    color:#a34936;background:#fff0eb;
+  }
+  .history-discord-btn:disabled{cursor:default;}
+  .history-discord-note{margin:6px 16px;font-size:11px;color:var(--muted);}
+  .hhead,.hrow{min-width:730px;}
 
   /* ---------- デバッグシート ---------- */
-  .debug-sheet{
-    flex:1;min-height:0;border:1px solid var(--line-strong);background:#fff;
-    display:flex;flex-direction:column;
+  .debug-section{
+    border:1px solid var(--line-strong);background:var(--panel);display:flex;flex:1;min-height:0;
+    flex-direction:column;
   }
-  .debug-sheet-head{
-    display:flex;align-items:center;justify-content:space-between;gap:16px;
-    padding:14px 18px;border-bottom:1px solid var(--line-strong);background:var(--header-bg);
+  .debug-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 16px;border-bottom:1px solid var(--line-strong);background:var(--header-bg);
   }
-  .debug-sheet-head h2{margin:0;font-size:16px;font-weight:800;}
-  .debug-sheet-head p{margin:3px 0 0;font-size:11.5px;color:var(--muted);}
-  .debug-sheet-head .btn{white-space:nowrap;flex-shrink:0;}
-  .debug-intro{
-    padding:11px 18px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);
+  .debug-head h2{margin:0;font-size:14px;font-weight:700;color:var(--ink);}
+  .debug-hint{font-size:11px;color:var(--muted);padding:8px 16px;border-bottom:1px solid var(--line);}
+  .debug-table{overflow:auto;flex:1;min-height:0;}
+  .dhead,.drow{
+    display:grid;grid-template-columns:minmax(260px,2fr) 120px 110px 140px 140px 34px;
+    gap:10px;align-items:center;min-width:900px;padding:0 14px;
   }
-  .debug-table{flex:1;min-height:0;overflow:auto;}
-  .debug-grid{
-    display:grid;grid-template-columns:minmax(300px,2fr) 210px 180px 180px 34px;
-    align-items:center;min-width:940px;
+  .dhead{
+    position:sticky;top:0;z-index:2;height:38px;background:var(--header-bg);
+    border-bottom:1px solid var(--line-strong);font-size:10.5px;font-weight:700;
   }
-  .debug-grid-head{
-    position:sticky;top:0;z-index:2;background:var(--header-bg);font-size:11.5px;font-weight:700;
-    min-height:48px;border-bottom:1px solid var(--line-strong);
+  .drow{height:48px;border-bottom:1px solid var(--line);}
+  .drow:hover{background:var(--hover);}
+  .drow input[type=text],.drow input[type=date]{
+    width:100%;height:34px;border:1px solid transparent;background:transparent;
+    font-family:'Noto Sans JP',sans-serif;font-size:12px;color:var(--ink);padding:0 7px;
   }
-  .debug-grid-head > span{padding:0 18px;}
-  .debug-issue-row{min-height:58px;border-bottom:1px solid var(--line);}
-  .debug-issue-row:hover{background:var(--hover);}
-  .debug-issue-row input[type=text],
-  .debug-issue-row input[type=date],
-  .debug-issue-row select{
-    width:calc(100% - 20px);height:38px;margin:0 10px;border:1px solid transparent;
-    background:transparent;color:var(--ink);font-family:'Noto Sans JP',sans-serif;font-size:12.5px;
-    padding:0 8px;
+  .drow input:hover,.drow input:focus{
+    background:var(--panel);border-color:var(--line-strong);outline:none;
   }
-  .debug-issue-row input[type=text]{cursor:text;}
-  .debug-issue-row input[type=text]:hover,
-  .debug-issue-row input[type=text]:focus,
-  .debug-issue-row input[type=date]:hover,
-  .debug-issue-row select:hover{
-    background:#fff;border-color:var(--line-strong);outline:none;
-  }
-  .debug-issue-row select{font-weight:600;cursor:pointer;}
+  .debug-empty{padding:40px 20px;text-align:center;color:var(--faint);font-size:13px;}
   .debug-delete{
-    border:none;background:transparent;color:var(--faint);font-size:16px;cursor:pointer;
-    width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+    border:none;background:transparent;color:var(--faint);font-size:15px;cursor:pointer;
+    width:26px;height:26px;display:flex;align-items:center;justify-content:center;
   }
   .debug-delete:hover{color:#c0574a;background:var(--hover);}
-  .debug-empty{padding:28px;text-align:center;color:var(--faint);font-size:12.5px;}
-  .modal.debug-modal{width:620px;height:76vh;max-height:76vh;}
-  .modal.debug-modal .modal-body textarea{min-height:300px;}
 
   /* ---------- modal ---------- */
   .modal-overlay{
@@ -484,7 +539,7 @@
   }
   .modal-overlay.open{display:flex;}
   .modal{
-    background:#fff;border:1px solid var(--line-strong);width:420px;max-width:92vw;
+    background:var(--panel);border:1px solid var(--line-strong);width:420px;max-width:92vw;
     height:78vh;max-height:78vh;display:flex;flex-direction:column;
     box-shadow:0 20px 50px -20px rgba(0,0,0,.4);
   }
@@ -501,7 +556,7 @@
   .modal-body .memo-label{flex:1;min-height:0;}
   .modal-body input[type=text],.modal-body input[type=date],.modal-body textarea,.modal-body select{
     font-family:'Noto Sans JP',sans-serif;font-size:13px;color:var(--ink);
-    border:1px solid var(--line-strong);padding:8px 9px;background:#fff;width:100%;
+    border:1px solid var(--line-strong);padding:8px 9px;background:var(--panel);width:100%;
   }
   .modal-body select{cursor:pointer;}
   .modal-body textarea{resize:vertical;min-height:260px;flex:1;height:100%;}
@@ -511,128 +566,191 @@
     display:flex;justify-content:space-between;gap:8px;
     padding:12px 16px;border-top:1px solid var(--line);
   }
+  .history-detail{
+    width:min(520px,92vw);max-height:78vh;margin:auto;padding:0;overflow:auto;
+    border:1px solid var(--line-strong);border-radius:12px;background:var(--panel);color:var(--ink);
+    box-shadow:0 20px 50px -20px rgba(0,0,0,.4);
+  }
+  .history-detail::backdrop{background:rgba(20,20,20,.45);}
+  .history-detail .modal-head{position:sticky;top:0;background:var(--panel);}
+  .history-detail .modal-head h2{margin:0;font-size:inherit;}
+  .history-detail-fields{display:grid;gap:12px;margin:0;padding:16px;}
+  .history-detail-fields dt{margin-bottom:4px;font-size:11.5px;font-weight:700;color:var(--muted);}
+  .history-detail-fields dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;}
   .user-gate-buttons{display:flex;flex-direction:column;gap:8px;}
   .user-gate-btn{width:100%;justify-content:center;font-size:14px;padding:12px;}
+
+  /* テーマ変更はCSSだけで適用し、編集中の入力欄を作り直さない。 */
+  :root[data-theme=dark] .btn-primary,
+  :root[data-theme=dark] .viewbar button.active,
+  :root[data-theme=dark] .rhead-day .d.is-today{color:#10261d;}
+  :root[data-theme=dark] .btn-primary:hover{background:#69e1b4;}
+  :root[data-theme=dark] .progress-select.progress-complete{color:#8bedbd;background-color:#214d3e;}
+  :root[data-theme=dark] .priority-select[data-priority=high]{color:#ffb1c1;background-color:#613344;}
+  :root[data-theme=dark] .priority-select[data-priority=low]{color:#b4d6ff;background-color:#284467;}
+  :root[data-theme=dark] .history-discord-btn{color:#bbd9ff;background:#284467;border-color:#557fad;}
+  :root[data-theme=dark] .history-discord-btn[data-registration=sent],
+  :root[data-theme=dark] .history-discord-btn[data-registration=pending]{color:#a2edc4;background:#214d3e;border-color:#518b71;}
+  :root[data-theme=dark] .history-discord-btn[data-registration=error],
+  :root[data-theme=dark] .history-discord-btn[data-registration=uncertain]{color:#ffc2ac;background:#593a32;border-color:#ae7562;}
+  :root[data-theme=dark] .sync-status.online{color:#a2edc4;background:#214d3e;border-color:#518b71;}
+  :root[data-theme=dark] .sync-status.syncing{color:#f2d993;background:#4c4228;border-color:#887848;}
+  :root[data-theme=dark] .sync-status.local{color:#c6d0df;background:#303c4c;border-color:#65758d;}
+  :root[data-theme=dark] .sync-status.error{color:#ffc2ac;background:#593a32;border-color:#ae7562;}
+  :root[data-theme=dark] .btn-danger{color:#ffb5a8;border-color:#ba796f;}
+  :root[data-theme=dark] .btn-danger:hover{background:#51332f;}
+  :root[data-theme=dark] .subrow-band{background:rgba(255,255,255,.03);}
+  :root[data-theme=dark] .gridrow:hover{background:rgba(255,255,255,.03);}
+  :root[data-theme=dark] .parent-tint{mix-blend-mode:screen;opacity:.13;}
+  :root[data-theme=dark] .modal-overlay{background:rgba(0,0,0,.65);}
+  :root[data-theme=dark] ::placeholder{color:#9aa9bd;opacity:1;}
 </style>
 </head>
 <body>
 <div class="app">
 
-  <div class="topbar">
-    <div class="brand">
-      <div class="logo"><span class="dot"></span><span id="projectTitle">Alius-Terra｜開発工程表</span></div>
-      <div class="sub" id="projectSubtitle">アリウステラ 共同編集ボード／タスクを右クリックすると詳細を編集できます</div>
+  <header class="page-header" id="pageHeader" tabindex="-1">
+    <div class="header-cover">
+      <div class="header-logo">
+        <div class="project-logo-art header-logo-art"><img src="aliusterra-logo.png" alt="Alius-Terra" width="1366" height="486"></div>
+        <h1 class="header-logo-title">開発管理ツール</h1>
+      </div>
     </div>
-    <div class="viewbar" id="viewbar"></div>
+    <div class="topbar-actions"><span id="authUserBadge" style="font-size:12px"></span><button class="btn btn-ghost" id="googleSignOutBtn" style="display:none">ログアウト</button>
+      <span class="sync-status syncing" id="syncStatus" role="img" aria-label="接続準備中" title="接続準備中">↻</span>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="ダークモードに切り替え" aria-pressed="false" title="ライトモード（クリックでダークモード）">☀</button>
+    </div>
+  </header>
+
+  <main class="tool-workspace" id="toolWorkspace">
+  <div class="tool-tabs-bar">
+    <div class="tool-tabs" role="tablist" aria-label="開発管理メニュー">
+      <button class="tool-tab active" id="taskTabBtn" data-tool-tab="tasks" role="tab" aria-selected="true" aria-controls="taskTabPanel">タスク管理</button>
+      <button class="tool-tab" id="debugTabBtn" data-tool-tab="debug" role="tab" aria-selected="false" aria-controls="debugTabPanel">デバッグシート</button>
+      <button class="tool-tab" id="agendaTabBtn" data-tool-tab="agenda" role="tab" aria-selected="false" aria-controls="agendaTabPanel">アジェンダシート</button>
+      </div>
   </div>
 
-  <div class="section-tabs" role="tablist" aria-label="管理画面">
-    <button class="section-tab active" id="taskTabBtn" role="tab" aria-selected="true" aria-controls="taskManagementView">タスク管理</button>
-    <button class="section-tab" id="debugTabBtn" role="tab" aria-selected="false" aria-controls="debugSheetView">デバッグシート</button>
-    <button class="section-tab" id="agendaTabBtn" role="tab" aria-selected="false" aria-controls="agendaSheetView">アジェンダシート</button>
-    <span class="sync-status" id="syncStatusBadge">接続準備中</span>
+  <section class="tool-panel active" id="taskTabPanel" role="tabpanel" aria-labelledby="taskTabBtn">
+  <div class="board-section" id="taskSection">
+    <div class="section-resizer" id="taskResizer" role="separator" aria-label="タスクエリアの高さ" aria-orientation="horizontal" aria-controls="taskContent" tabindex="0"></div>
+    <div class="board-section-head task-section-head">
+      <div class="section-heading-group">
+        <h2 class="section-heading"><button class="section-toggle" id="taskToggle" type="button" aria-expanded="true" aria-controls="taskContent"><span id="taskTriangle" aria-hidden="true">▼</span> タスク</button></h2>
+        <span class="detail-info" tabindex="0" role="img" aria-label="タスクの詳細表示について" aria-describedby="rowDetailHint">i</span>
+      </div>
+      <div class="toolbar2 task-tools">
+        <div class="viewbar" id="viewbar"></div>
+        <button class="btn btn-primary" id="addRootBtn">＋ タスクを追加</button>
+        <button class="btn btn-ghost" id="jumpTodayBtn">今日へ移動</button>
+        <div class="assignee-filter" id="assigneeFilterBar" role="group" aria-label="担当者で絞り込む"></div>
+        <span class="today-badge" id="todayBadge"></span>
+      </div>
+    </div>
+
+  <div class="board" id="taskContent">
+    <div class="panel-left" id="panelLeft">
+      <div class="lhead">
+        <span class="task-name-heading">タスク名</span>
+        <span>作業ブランチ</span>
+        <span>進捗</span>
+        <span>優先度</span>
+        <span>担当者</span>
+        <button class="collapse-btn" id="collapseBtn" type="button" aria-controls="panelLeft" aria-label="タスクリストを隠す" title="タスクリストを隠す">⟨⟨</button>
+      </div>
+      <div id="leftRows"></div>
+    </div>
+    <div class="panel-resizer" id="panelResizer"></div>
+    <div class="panel-right" id="panelRight">
+      <div class="rhead" id="rhead">
+        <div class="rhead-month" id="rheadMonth"></div>
+        <div class="rhead-day" id="rheadDay"></div>
+        <div class="rhead-milestone" id="rheadMilestone"></div>
+      </div>
+      <div class="rbody" id="rbody"></div>
+    </div>
+    <button class="reopen-btn" id="reopenListBtn" title="タスクリストを表示">☰</button>
+  </div>
   </div>
 
-  <div class="workspace-view active" id="taskManagementView" role="tabpanel" aria-labelledby="taskTabBtn">
-    <div class="toolbar2">
-      <button class="btn btn-primary" id="addRootBtn">＋ タスクを追加</button>
-      <button class="btn btn-ghost" id="jumpTodayBtn">今日へ移動</button>
-      <div class="assignee-filter" id="assigneeFilterBar"></div>
-      <span id="authUserBadge" style="display:none;font-size:12px;color:var(--muted);background:#fff;border:1px solid var(--line);padding:7px 10px;"></span>
-      <button class="btn btn-ghost" id="googleSignOutBtn" style="display:none;">ログアウト</button>
-      <span class="today-badge" id="todayBadge"></span>
+  <div class="board-section" id="historySection">
+    <div class="section-resizer" id="historyResizer" role="separator" aria-label="作業履歴の高さ" aria-orientation="horizontal" aria-controls="historyContent" tabindex="0"></div>
+    <div class="board-section-head">
+      <div class="section-heading-group">
+        <h2 class="section-heading"><button class="section-toggle" id="historyToggle" type="button" aria-expanded="true" aria-controls="historyContent"><span id="historyTriangle" aria-hidden="true">▼</span> 作業履歴</button></h2>
+        <span class="detail-info" tabindex="0" role="img" aria-label="作業履歴の詳細表示について" aria-describedby="rowDetailHint">i</span>
+      </div>
+      <button class="btn btn-primary" id="addHistoryBtn">＋ 履歴を追加</button>
     </div>
-
-    <div class="board" id="boardEl">
-      <div class="panel-left" id="panelLeft">
-        <div class="lhead">
-          <button class="collapse-btn" id="collapseBtn" title="タスクリストを隠す">⟨⟨</button>
-          <span class="name-h">タスク</span>
-          <span>進捗</span>
-          <span>担当者</span>
-        </div>
-        <div id="leftRows"></div>
+    <div class="history-content" id="historyContent">
+    <p class="history-discord-note" id="historyDiscordNote" role="status"></p>
+    <div class="history-table" id="historyTable">
+      <div class="hhead">
+        <span>作業内容</span>
+        <span>作業ブランチ</span>
+        <span>担当者</span>
+        <span>編集日</span>
+        <span>Discord登録</span>
+        <span></span>
       </div>
-      <div class="panel-resizer" id="panelResizer"></div>
-      <div class="panel-right" id="panelRight">
-        <div class="rhead" id="rhead">
-          <div class="rhead-month" id="rheadMonth"></div>
-          <div class="rhead-day" id="rheadDay"></div>
-          <div class="rhead-milestone" id="rheadMilestone"></div>
-        </div>
-        <div class="rbody" id="rbody"></div>
-      </div>
-      <button class="reopen-btn" id="reopenListBtn" title="タスクリストを表示">☰</button>
+      <div id="historyRows"></div>
     </div>
-
-    <div class="history-section" id="historySection" data-panel-state="EXPANDED">
-      <div class="history-resizer" id="historyResizer" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="作業履歴の高さを調整" title="上下にドラッグして高さを調整（最大は画面の3分の1）。矢印キーでも調整できます。"></div>
-      <div class="history-head">
-        <div class="history-heading">
-          <button class="history-toggle" id="historyToggleBtn" type="button" aria-expanded="true" aria-controls="historyContent" aria-label="作業履歴を閉じる" title="作業履歴を閉じる"><span aria-hidden="true">▼</span></button>
-          <h2>作業履歴</h2>
-        </div>
-        <button class="btn btn-primary" id="addHistoryBtn">＋ 履歴を追加</button>
-      </div>
-      <div class="history-content" id="historyContent">
-      <p class="history-notice" id="historyRegistrationNotice" role="status">右端の「未登録」を押すとDiscordへ投稿します。登録は投稿受付済みで、反映まで約1分かかります。</p>
-      <div class="history-table" id="historyTable">
-        <div class="hhead">
-          <span>作業内容</span>
-          <span>作業区分</span>
-          <span>担当者</span>
-          <span>編集日</span>
-          <span></span>
-          <span>Discord登録</span>
-        </div>
-        <div id="historyRows"></div>
-      </div>
-      </div>
     </div>
   </div>
+  </section>
 
-  <div class="workspace-view" id="debugSheetView" role="tabpanel" aria-labelledby="debugTabBtn">
-    <section class="debug-sheet">
-      <div class="debug-sheet-head">
-        <div>
+  <section class="tool-panel" id="debugTabPanel" role="tabpanel" aria-labelledby="debugTabBtn">
+    <div class="debug-section">
+      <div class="debug-head">
+        <div class="section-heading-group">
           <h2>デバッグシート</h2>
-          <p>問題名を右クリックすると概要を表示・編集できます</p>
+          <span class="detail-info" tabindex="0" role="img" aria-label="デバッグシートの詳細表示について" aria-describedby="rowDetailHint">i</span>
         </div>
         <button class="btn btn-primary" id="addDebugIssueBtn">＋ 問題を追加</button>
       </div>
-      <div class="debug-intro">不具合や確認事項を記録し、対応状況と発生・解決の日付を共有します。</div>
+      <div class="debug-hint">不具合や確認事項を記録し、対応状況と発生・解決の日付を共有します。</div>
       <div class="debug-table">
-        <div class="debug-grid debug-grid-head">
+        <div class="dhead">
           <span>発生している問題</span>
           <span>対応状況</span>
+          <span>対応者</span>
           <span>発生した日付</span>
           <span>解決した日付</span>
           <span></span>
         </div>
-        <div id="debugIssueRows"></div>
+        <div id="debugRows"></div>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
 
-  <div class="workspace-view" id="agendaSheetView" role="tabpanel" aria-labelledby="agendaTabBtn">
-    <section class="debug-sheet">
-      <div class="debug-sheet-head">
-        <div>
+  <section class="tool-panel" id="agendaTabPanel" role="tabpanel" aria-labelledby="agendaTabBtn">
+    <div class="debug-section">
+      <div class="debug-head">
+        <div class="section-heading-group">
           <h2>アジェンダシート</h2>
-          <p>議題名を右クリックすると概要を表示・編集できます</p>
+          <span class="detail-info" tabindex="0" role="img" aria-label="アジェンダシートの詳細表示について" aria-describedby="rowDetailHint">i</span>
         </div>
         <button class="btn btn-primary" id="addAgendaItemBtn">＋ 議題を追加</button>
       </div>
-      <div class="debug-intro">開発における議題や要望を記録し、対応状況と起票・完了の日付を共有します。</div>
+      <div class="debug-hint">開発における議題や要望を記録し、対応状況と起票・完了の日付を共有します。</div>
       <div class="debug-table">
-        <div class="debug-grid debug-grid-head">
-          <span>議題・要望</span><span>対応状況</span><span>起票した日付</span><span>完了した日付</span><span></span>
+        <div class="dhead">
+          <span>議題・要望</span>
+          <span>対応状況</span>
+          <span>対応者</span>
+          <span>起票した日付</span>
+          <span>完了した日付</span>
+          <span></span>
         </div>
-        <div id="agendaItemRows"></div>
+        <div id="agendaRows"></div>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
 
+  </main>
+  <footer class="page-footer">
+    <button class="project-logo-art footer-logo" id="backToTop" type="button" aria-label="ページの先頭へ戻る" title="ページの先頭へ戻る"><img src="aliusterra-logo.png" alt="" width="1366" height="486"></button>
+  </footer>
 </div>
 
 <div class="modal-overlay" id="modalOverlay">
@@ -656,42 +774,62 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="debugIssueModalOverlay">
-  <div class="modal debug-modal">
+<div class="modal-overlay" id="debugModalOverlay">
+  <div class="modal">
     <div class="modal-head">
       <span>問題の概要</span>
-      <button class="modal-close" id="debugIssueModalClose">×</button>
+      <button class="modal-close" id="debugModalClose">×</button>
     </div>
     <div class="modal-body">
       <label>発生している問題
-        <input type="text" id="debugIssueTitle">
+        <input type="text" id="debugModalTitle">
       </label>
       <label class="memo-label">概要
-        <textarea id="debugIssueSummary" placeholder="再現手順、発生条件、調査内容、対応方針などを記録できます"></textarea>
+        <textarea id="debugModalSummary" placeholder="再現手順、発生条件、調査内容、対応方針などを記録できます"></textarea>
       </label>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-danger" id="debugIssueDelete">この問題を削除</button>
-      <button class="btn btn-primary" id="debugIssueSave">保存</button>
+      <button class="btn btn-danger" id="debugModalDelete">この問題を削除</button>
+      <button class="btn btn-primary" id="debugModalSave">保存</button>
     </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="agendaItemModalOverlay">
-  <div class="modal debug-modal">
+<div class="modal-overlay" id="agendaModalOverlay">
+  <div class="modal">
     <div class="modal-head">
-      <span>議題・要望の概要</span><button class="modal-close" id="agendaItemModalClose">×</button>
+      <span>議題・要望の概要</span>
+      <button class="modal-close" id="agendaModalClose">×</button>
     </div>
     <div class="modal-body">
-      <label>議題・要望<input type="text" id="agendaItemTitle"></label>
-      <label class="memo-label">概要<textarea id="agendaItemSummary" placeholder="背景、要望の内容、検討事項、決定内容などを記録できます"></textarea></label>
+      <label>議題・要望
+        <input type="text" id="agendaModalTitle">
+      </label>
+      <label class="memo-label">概要
+        <textarea id="agendaModalSummary" placeholder="背景、要望の内容、検討事項、決定内容などを記録できます"></textarea>
+      </label>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-danger" id="agendaItemDelete">この議題を削除</button>
-      <button class="btn btn-primary" id="agendaItemSave">保存</button>
+      <button class="btn btn-danger" id="agendaModalDelete">この議題を削除</button>
+      <button class="btn btn-primary" id="agendaModalSave">保存</button>
     </div>
   </div>
 </div>
+
+<div class="row-detail-hint" id="rowDetailHint" role="tooltip" popover="manual">行を右クリックで詳細を表示します</div>
+
+<dialog class="history-detail" id="historyDetail" aria-labelledby="historyDetailTitle">
+  <div class="modal-head">
+    <h2 id="historyDetailTitle">作業履歴の詳細</h2>
+    <form method="dialog"><button class="modal-close" aria-label="詳細を閉じる" autofocus>×</button></form>
+  </div>
+  <dl class="history-detail-fields">
+    <div><dt>作業内容</dt><dd id="historyDetailContent"></dd></div>
+    <div><dt>作業ブランチ</dt><dd id="historyDetailBranch"></dd></div>
+    <div><dt>担当者</dt><dd id="historyDetailAssignee"></dd></div>
+    <div><dt>編集日</dt><dd id="historyDetailDate"></dd></div>
+  </dl>
+</dialog>
 
 <div class="modal-overlay open" id="userGateOverlay">
   <div class="modal gate-modal">
@@ -726,48 +864,31 @@
   </div>
 </div>
 
-<!-- ===================== Firebase（Alius-Terra リアルタイム共有用） =====================
-  セットアップ手順は同梱の README.md を参照してください。
-  FIREBASE_CONFIG には「アリウステラ専用」に新規作成した Firebase Web アプリの値を貼り付けます。
-  元プロジェクトの Firebase 設定は使用しません。
--->
+<script src="app-config.js?v=parity-20261118"></script>
+<script src="history-discord.js?v=parity-20261118"></script>
+<script src="completion.js?v=parity-20261118"></script>
+<script src="firebase-config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
 <script>
-/* ===================== Alius-Terra 設定 =====================
-   メンバー名やFirebase接続先は、基本的にここだけ編集すればOKです。 */
-const APP_CONFIG = {
-  projectTitle: 'Alius-Terra｜開発工程表',
-  projectSubtitle: 'アリウステラ 共同編集ボード／タスクを右クリックすると詳細を編集できます',
-  members: ['きむち', 'しぶ', 'いつ', 'いちご'],
-  databasePath: 'aliusTerraBoard',
-};
-
-/* Firebase Console → プロジェクト設定 → マイアプリ → SDK の設定と構成 から貼り付け */
-const FIREBASE_CONFIG = {
-   apiKey: "AIzaSyBtX0k9H1XfiNKgW9eheddZxR0pVJ87qh8",
-  authDomain: "aliusterratasks.firebaseapp.com",
-  databaseURL: "https://aliusterratasks-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "aliusterratasks",
-  storageBucket: "aliusterratasks.firebasestorage.app",
-  messagingSenderId: "172734669556",
-  appId: "1:172734669556:web:c11c72b7ba925d4e2b74a1",
-  measurementId: "G-BHTQRVFXG9"
-};
-
+const APP_CONFIG = window.ALIUS_TERRA_TASK_CONFIG || {};
+const FIREBASE_CONFIG = window.ALIUS_TERRA_FIREBASE_CONFIG || {};
 let boardRef = null;
 let firebaseReady = false;
-try{
-  if(FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY"){
-    firebase.initializeApp(FIREBASE_CONFIG);
-    boardRef = firebase.database().ref(APP_CONFIG.databasePath);
-    firebaseReady = true;
-  }
-}catch(e){
-  console.error('Firebase初期化に失敗しました', e);
+const SYNC_STATUS_ICONS = {online:'✓',syncing:'↻',local:'⌂',error:'!'};
+function setSyncStatus(kind,text){
+  const el=document.getElementById('syncStatus');
+  if(!el) return;
+  el.className='sync-status '+kind; el.textContent=SYNC_STATUS_ICONS[kind];
+  el.title=text; el.setAttribute('aria-label',text);
 }
+try{
+  firebase.initializeApp(FIREBASE_CONFIG);
+  boardRef=firebase.database().ref(APP_CONFIG.boardPath);
+  firebaseReady=true;
+}catch(error){console.error('Firebase初期化に失敗しました',error);setSyncStatus('error','Firebase設定エラー');}
 </script>
 
 <script>
@@ -777,7 +898,7 @@ const googleSignInBtn = document.getElementById('googleSignInBtn');
 const googleSignOutBtn = document.getElementById('googleSignOutBtn');
 const authUserBadge = document.getElementById('authUserBadge');
 const authErrorMessage = document.getElementById('authErrorMessage');
-const syncStatusBadge = document.getElementById('syncStatusBadge');
+const syncStatusBadge = null;
 
 const firebaseAuth = firebaseReady ? firebase.auth() : null;
 const googleAuthProvider = firebaseReady
@@ -830,6 +951,8 @@ function updateAuthUi(){
     googleSignInBtn.textContent = isSigningIn ? 'ログイン中...' : 'Googleでログイン';
   }
 
+  setSyncStatus(authState===AUTH_STATE.DATABASE_READY ? 'online' : 'syncing',
+    authState===AUTH_STATE.DATABASE_READY ? 'Firebase同期中' : isSignedIn ? 'Firebase接続中' : 'Googleログイン待ち');
   if(syncStatusBadge){
     const syncLabels = {
       [AUTH_STATE.INITIALIZING]: '接続準備中',
@@ -947,13 +1070,8 @@ function stopFirebaseSync(){
   dirtyRootOrder = false;
   dirtyHistoryIds.clear();
   deletedHistoryIds.clear();
-  pendingHistoryNotifications.clear();
-  latestHistoryNotificationRevisions.clear();
-  registeredHistoryNotifications.clear();
-  historyRegistrationOperations.clear();
-  clearTimeout(historyNotificationRetryTimer);
-  historyNotificationRetryTimer = null;
-  historyNotificationRetryAttempts = 0;
+  stopHistoryDiscordSync();
+  legacyHistoryNotifications={};
   dirtyMilestoneDates.clear();
   dirtyDebugIssueIds.clear();
   deletedDebugIssueIds.clear();
@@ -996,6 +1114,7 @@ function startFirebaseSync(){
       return;
     }
 
+    discardPendingServerData();
     applyServerData(data);
 
     if(!didFirstRender){
@@ -1028,6 +1147,7 @@ if(firebaseAuth){
     if(user){
       console.log('Firebase Authentication認証済み:', user.email || user.uid);
       changeAuthState(AUTH_STATE.AUTHENTICATED);
+      startHistoryDiscordSync();
       startFirebaseSync();
     } else {
       console.log('Firebase Authentication未ログイン');
@@ -1043,23 +1163,42 @@ if(firebaseAuth){
   );
 }
 
-/* 画面上のプロジェクト名を設定から反映 */
-document.title = APP_CONFIG.projectTitle;
-document.getElementById('projectTitle').textContent = APP_CONFIG.projectTitle;
-document.getElementById('projectSubtitle').textContent = APP_CONFIG.projectSubtitle;
-
 /* ===================== 定数 ===================== */
-const ASSIGNEES = APP_CONFIG.members;
+const ASSIGNEES = Array.isArray(APP_CONFIG.assignees) && APP_CONFIG.assignees.length
+  ? APP_CONFIG.assignees
+  : ['担当者'];
+const WORK_BRANCHES = [...new Set((Array.isArray(APP_CONFIG.workBranches) ? APP_CONFIG.workBranches : [])
+  .filter(branch=>typeof branch==='string' && branch.trim() && branch!=='main'))];
+function workBranchOptions(current){
+  const options=[{value:'',label:'未設定',disabled:false},
+    ...WORK_BRANCHES.map(branch=>({value:branch,label:branch,disabled:false}))];
+  if(current==='main') options[0].label='保存値は対象外（変更なし）';
+  else if(current && !WORK_BRANCHES.includes(current)){
+    // 候補外の保存済みデータは無断で変更しない。再選択用の候補にはしない。
+    options.push({value:current,label:current+'（保存済み・候補外）',disabled:true});
+  }
+  return options;
+}
+document.title = APP_CONFIG.title || 'Alius-Terra 開発管理ツール';
 const PROGRESS_OPTIONS = [
   {v:0,   label:'未着手'},
   {v:33,  label:'作業中'},
   {v:66,  label:'保留'},
   {v:100, label:'完了'},
 ];
+const PRIORITY_OPTIONS = [{id:'low',label:'低'},{id:'medium',label:'中'},{id:'high',label:'高'}];
+function normalizePriority(value){return PRIORITY_OPTIONS.some(p=>p.id===value) ? value : 'medium';}
 const VIEWS = [
   {id:'normal',    label:'追加順'},
   {id:'priority',  label:'優先度順'},
   {id:'status',    label:'進捗順'},
+];
+const DEBUG_STATUS_OPTIONS = [
+  {id:'open', label:'未対応'},
+  {id:'investigating', label:'調査中'},
+  {id:'working', label:'対応中'},
+  {id:'verifying', label:'確認待ち'},
+  {id:'resolved', label:'解決済み'},
 ];
 const ROW_H = 58;
 const SUB_ROW_H = 33;
@@ -1101,6 +1240,8 @@ function makeTask(overrides){
     id:newId('t'),
     name:'新しいタスク',
     status:0,
+    repo:'',
+    priority:'medium',
     assignee:ASSIGNEES[0],
     start:t,
     end:addDays(t,2),
@@ -1113,28 +1254,35 @@ function seedTasks(){
   return [];
 }
 
-let state = {
-  tasks: seedTasks(),
-  view: 'normal',
-  history: [],
-  milestones: {},
-  debugIssues: [],
-  agendaItems: [],
-};
-let currentUser = null;
-let assigneeFilter = null;
+function createInitialState(){return {tasks:[],history:[],debugIssues:[],agendaItems:[],milestones:{},view:'normal'};}
+let state=createInitialState();
+let currentUser=localStorage.getItem('aliusTerraTaskBoard.currentUser');
+if(!ASSIGNEES.includes(currentUser)) currentUser=null;
+let assigneeFilter=null;
+const toolTabs = new Map(Array.from(document.querySelectorAll('[data-tool-tab]'),tab=>[tab.dataset.toolTab,tab]));
+const previousView={TASKS:'tasks',DEBUG:'debug',AGENDA:'agenda'}[localStorage.getItem('aliusTerraTaskBoard.workspaceView')];
+const savedToolTab=localStorage.getItem('aliusTerraTaskBoard.activeToolTab') || previousView;
+let activeToolTab = toolTabs.has(savedToolTab) ? savedToolTab : 'tasks';
 
-const WORKSPACE_VIEW = Object.freeze({
-  TASKS: 'TASKS',
-  DEBUG: 'DEBUG',
-  AGENDA: 'AGENDA',
-});
-let currentWorkspaceView = WORKSPACE_VIEW.TASKS;
-const DEBUG_STATUS_OPTIONS = ['未対応', '対応中', '確認待ち', '解決済み'];
-const AGENDA_STATUS_OPTIONS = Object.freeze([
-  {id:'open',label:'未対応'}, {id:'investigating',label:'調査中'}, {id:'working',label:'対応中'},
-  {id:'verifying',label:'確認待ち'}, {id:'resolved',label:'解決済み'},
-]);
+function setActiveToolTab(tabId, persist){
+  if(textEditing.element) textEditing.element.blur();
+  const workspace = document.getElementById('toolWorkspace');
+  const nextTab = toolTabs.has(tabId) ? tabId : 'tasks';
+  const wasPinned = persist!==false && nextTab!==activeToolTab && workspace.getBoundingClientRect().top<=0;
+  activeToolTab=nextTab;
+  toolTabs.forEach((tab,id)=>{
+    const selected = id===activeToolTab;
+    tab.classList.toggle('active',selected);
+    tab.setAttribute('aria-selected',String(selected));
+    document.getElementById(tab.getAttribute('aria-controls')).classList.toggle('active',selected);
+  });
+  if(persist!==false) localStorage.setItem('aliusTerraTaskBoard.activeToolTab', activeToolTab);
+  if(activeToolTab==='debug') renderDebugSheet();
+  if(activeToolTab==='agenda') renderAgendaSheet();
+  if(wasPinned) workspace.scrollIntoView({block:'start'});
+}
+toolTabs.forEach((tab,id)=>tab.addEventListener('click',()=>setActiveToolTab(id)));
+
 
 /* ===================== Firebaseとの同期（変更があった部分だけ送る） ===================== */
 // タスクは Firebase 上では { id: {...フィールド..., childOrder:[子のid,...]} } というフラットな形で持ち、
@@ -1144,23 +1292,12 @@ let deletedTaskIds = new Set();
 let dirtyRootOrder = false;
 let dirtyHistoryIds = new Set();
 let deletedHistoryIds = new Set();
-// Discord登録ボタンで明示的に登録した値だけを通知する。
-const pendingHistoryNotifications = new Map();
-const latestHistoryNotificationRevisions = new Map();
-const registeredHistoryNotifications = new Map();
-const historyRegistrationOperations = new Map();
-const HISTORY_REGISTRATION_STATE = Object.freeze({
-  UNREGISTERED:'UNREGISTERED', REGISTERING:'REGISTERING', REGISTERED:'REGISTERED', ERROR:'ERROR',
-});
-let historyNotificationRetryTimer = null;
-let historyNotificationRetryAttempts = 0;
 let dirtyMilestoneDates = new Set();
 let dirtyDebugIssueIds = new Set();
 let deletedDebugIssueIds = new Set();
-const dirtyAgendaItemIds = new Set();
-const deletedAgendaItemIds = new Set();
+let dirtyAgendaItemIds = new Set();
+let deletedAgendaItemIds = new Set();
 let saveTimer = null;
-
 const TEXT_EDIT_STATE = Object.freeze({
   IDLE: 'IDLE',
   EDITING: 'EDITING',
@@ -1188,82 +1325,29 @@ function markContainerOwnerDirty(path){
 }
 function markHistoryDirty(id){ if(id) dirtyHistoryIds.add(id); }
 function markHistoryDeleted(id){ if(id){ deletedHistoryIds.add(id); dirtyHistoryIds.delete(id); } }
-function historyNotificationEntry(history){
-  return {id:history.id, content:history.content || '', repo:history.repo || '',
-    assignee:history.assignee || '', date:history.date || ''};
-}
-function historyRegistrationSignature(entry){
-  return JSON.stringify([entry.id, entry.content, entry.repo, entry.assignee, entry.date]);
-}
-function getHistoryRegistrationState(history){
-  const signature = historyRegistrationSignature(historyNotificationEntry(history));
-  const operation = historyRegistrationOperations.get(history.id);
-  if(operation && operation.signature === signature) return operation.state;
-  const notification = registeredHistoryNotifications.get(history.id);
-  return notification?.trigger === 'manual' && notification.operation === 'saved' && notification.entry &&
-    historyRegistrationSignature(notification.entry) === signature
-    ? HISTORY_REGISTRATION_STATE.REGISTERED : HISTORY_REGISTRATION_STATE.UNREGISTERED;
-}
-function refreshHistoryRegistrationButtons(){
-  document.querySelectorAll('#historyRows .hrow').forEach(row=>{
-    const history = state.history.find(h=>h.id===row.dataset.historyId);
-    if(history) updateHistoryRegistrationRow(row, history);
-  });
-}
-function setHistoryRegistrationNotice(message){
-  const notice = document.getElementById('historyRegistrationNotice');
-  if(notice) notice.textContent = message;
-}
-function registerHistoryEntry(id){
-  if(textEditing.state === TEXT_EDIT_STATE.COMPOSING){
-    setHistoryRegistrationNotice('日本語の変換を確定してから登録してください。');
-    return;
-  }
-  if(textEditing.element) finishTextEditing(textEditing.element);
-  const history = state.history.find(h=>h.id===id);
-  if(!history) return;
-  const registrationState = getHistoryRegistrationState(history);
-  if(registrationState === HISTORY_REGISTRATION_STATE.REGISTERING || registrationState === HISTORY_REGISTRATION_STATE.REGISTERED) return;
-  if(!history.content.trim()){
-    setHistoryRegistrationNotice('作業内容を入力してから登録してください。');
-    return;
-  }
-  if(!firebaseReady || !firebaseAuth?.currentUser || authState !== AUTH_STATE.DATABASE_READY){
-    setHistoryRegistrationNotice('ログインと接続を確認してから、もう一度登録してください。');
-    return;
-  }
-  queueHistoryNotification(history);
-  const notification = pendingHistoryNotifications.get(id);
-  historyRegistrationOperations.set(id, {revision:notification.revision,
-    signature:historyRegistrationSignature(notification.entry), state:HISTORY_REGISTRATION_STATE.REGISTERING});
-  markHistoryDirty(id);
-  refreshHistoryRegistrationButtons();
-  saveImmediately();
-}
-function queueHistoryNotification(history, operation = 'saved'){
-  if(!history || !history.id) return;
-  const revision = newId('n');
-  latestHistoryNotificationRevisions.set(history.id, revision);
-  pendingHistoryNotifications.set(history.id, {
-    revision,
-    trigger:'manual',
-    operation,
-    entry: historyNotificationEntry(history),
-    actor: currentUser || '',
-    committedAt: firebase.database.ServerValue.TIMESTAMP,
-  });
-}
 function markMilestoneDirty(dateStr){ dirtyMilestoneDates.add(dateStr); }
 function markDebugIssueDirty(id){ if(id) dirtyDebugIssueIds.add(id); }
-function markDebugIssueDeleted(id){ if(id){ deletedDebugIssueIds.add(id); dirtyDebugIssueIds.delete(id); } }
+function markDebugIssueDeleted(id){
+  if(id){
+    deletedDebugIssueIds.add(id);
+    dirtyDebugIssueIds.delete(id);
+  }
+}
 function markAgendaItemDirty(id){ if(id) dirtyAgendaItemIds.add(id); }
-function markAgendaItemDeleted(id){ if(id){ deletedAgendaItemIds.add(id); dirtyAgendaItemIds.delete(id); } }
+function markAgendaItemDeleted(id){
+  if(id){
+    deletedAgendaItemIds.add(id);
+    dirtyAgendaItemIds.delete(id);
+  }
+}
 
 function serializeTaskFlat(node){
   const flat = {
     id: node.id,
     name: node.name,
     status: node.status,
+    repo: node.repo || '',
+    priority: normalizePriority(node.priority),
     assignee: node.assignee,
     start: node.start,
     end: node.end,
@@ -1286,20 +1370,26 @@ function findTaskNodeById(id, list){
 }
 
 function scheduleSave(){
-  if(!firebaseReady || !firebaseAuth || !firebaseAuth.currentUser || authState !== AUTH_STATE.DATABASE_READY) return;
+  if(!firebaseReady || !firebaseAuth?.currentUser) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(doSave, 350);
 }
-function saveImmediately(){
+function hasUnsavedChanges(){
+  return dirtyTaskIds.size>0 || deletedTaskIds.size>0 || dirtyRootOrder ||
+    dirtyHistoryIds.size>0 || deletedHistoryIds.size>0 || dirtyMilestoneDates.size>0 ||
+    dirtyDebugIssueIds.size>0 || deletedDebugIssueIds.size>0 ||
+    dirtyAgendaItemIds.size>0 || deletedAgendaItemIds.size>0;
+}
+function saveNow(){
   clearTimeout(saveTimer);
   saveTimer = null;
+  if(!firebaseReady || !firebaseAuth?.currentUser) return;
   doSave();
 }
 function doSave(){
-  if(!firebaseReady || !firebaseAuth || !firebaseAuth.currentUser || authState !== AUTH_STATE.DATABASE_READY) return;
+  saveTimer = null;
+  if(!firebaseReady || !firebaseAuth?.currentUser || textEditing.state===TEXT_EDIT_STATE.COMPOSING) return;
   const updates = {};
-  const notificationBatch = new Map(pendingHistoryNotifications);
-  const savingUserId = firebaseAuth.currentUser.uid;
   let hasUpdates = false;
 
   dirtyTaskIds.forEach(id=>{
@@ -1324,16 +1414,12 @@ function doSave(){
     updates['history/'+id] = null;
     hasUpdates = true;
   });
-  notificationBatch.forEach((notification, id)=>{
-    updates['historyNotifications/'+id] = notification;
-    hasUpdates = true;
-  });
   dirtyMilestoneDates.forEach(d=>{
     updates['milestones/'+d] = state.milestones[d] || null;
     hasUpdates = true;
   });
   dirtyDebugIssueIds.forEach(id=>{
-    const issue = state.debugIssues.find(item=>item.id===id);
+    const issue = state.debugIssues.find(x=>x.id===id);
     updates['debugIssues/'+id] = issue || null;
     hasUpdates = true;
   });
@@ -1342,7 +1428,7 @@ function doSave(){
     hasUpdates = true;
   });
   dirtyAgendaItemIds.forEach(id=>{
-    const item = state.agendaItems.find(item=>item.id===id);
+    const item = state.agendaItems.find(x=>x.id===id);
     updates['agendaItems/'+id] = item || null;
     hasUpdates = true;
   });
@@ -1356,56 +1442,21 @@ function doSave(){
   dirtyRootOrder = false;
   dirtyHistoryIds.clear();
   deletedHistoryIds.clear();
-  pendingHistoryNotifications.clear();
   dirtyMilestoneDates.clear();
   dirtyDebugIssueIds.clear();
   deletedDebugIssueIds.clear();
-
   dirtyAgendaItemIds.clear();
   deletedAgendaItemIds.clear();
 
   if(!hasUpdates) return;
-  notificationBatch.forEach((notification, id)=>{
-    const operation = historyRegistrationOperations.get(id);
-    if(operation?.revision === notification.revision) operation.state = HISTORY_REGISTRATION_STATE.REGISTERING;
-  });
-  refreshHistoryRegistrationButtons();
+  setSyncStatus('syncing', '保存中');
   boardRef.update(updates).then(()=>{
-    if(!firebaseAuth.currentUser || firebaseAuth.currentUser.uid !== savingUserId) return;
-    if(notificationBatch.size) historyNotificationRetryAttempts = 0;
-    notificationBatch.forEach((notification, id)=>{
-      if(latestHistoryNotificationRevisions.get(id) !== notification.revision) return;
-      registeredHistoryNotifications.set(id, notification);
-      if(historyRegistrationOperations.get(id)?.revision === notification.revision) historyRegistrationOperations.delete(id);
-    });
-    if(notificationBatch.size){
-      refreshHistoryRegistrationButtons();
-      setHistoryRegistrationNotice('登録しました。Discordへの反映まで約1分かかります。編集した履歴は再登録してください。');
-      applyPendingServerData();
-    }
+    setSyncStatus('online', 'Firebase同期中');
   }).catch(err=>{
     console.error('Firebase書き込みエラー', err);
-    // 確定履歴と通知は同時に保存される。失敗時は新しい編集を上書きせず再送する。
-    if(!firebaseAuth.currentUser || firebaseAuth.currentUser.uid !== savingUserId) return;
-    notificationBatch.forEach((notification, id)=>{
-      if(latestHistoryNotificationRevisions.get(id) !== notification.revision || pendingHistoryNotifications.has(id)) return;
-      pendingHistoryNotifications.set(id, notification);
-      const operation = historyRegistrationOperations.get(id);
-      if(operation?.revision === notification.revision) operation.state = HISTORY_REGISTRATION_STATE.ERROR;
-      if(state.history.some(h=>h.id===id)) markHistoryDirty(id);
-      else markHistoryDeleted(id);
-    });
-    if(notificationBatch.size){
-      refreshHistoryRegistrationButtons();
-      setHistoryRegistrationNotice('登録に失敗しました。接続を確認してください。自動再試行後も未登録の場合は、もう一度押してください。');
-    }
-    if(pendingHistoryNotifications.size && historyNotificationRetryAttempts < 3){
-      clearTimeout(historyNotificationRetryTimer);
-      historyNotificationRetryTimer = setTimeout(saveImmediately, 5000 * 2**historyNotificationRetryAttempts++);
-    }
+    setSyncStatus('error', '保存エラー');
   });
 }
-
 function resetTextEditingState(){
   textEditing = {
     state: TEXT_EDIT_STATE.IDLE,
@@ -1471,7 +1522,7 @@ function finishTextEditing(element){
 
   if(hasLocalChanges){
     discardPendingServerData();
-    saveImmediately();
+    saveNow();
   } else {
     applyPendingServerData();
   }
@@ -1586,8 +1637,10 @@ function deleteTask(path){
 }
 function setField(path, field, value){
   const node = getNode(path);
+  const previous = node[field];
   node[field] = value;
   markTaskDirty(node.id);
+  if(field==='status' && previous!==100 && value===100) recordCompletion('task',node);
 }
 
 /* ===================== 表示順の構築 ===================== */
@@ -1595,6 +1648,9 @@ function baseCompareFn(view){
   switch(view){
     case 'priority':
       return (a,b)=>{
+        const rank = {low:0,medium:1,high:2};
+        const priority = rank[normalizePriority(b.priority)] - rank[normalizePriority(a.priority)];
+        if(priority) return priority;
         if(a.end!==b.end) return a.end<b.end?-1:1;
         return a.status-b.status;
       };
@@ -1693,36 +1749,15 @@ function tintColorFor(task){
 }
 
 /* ===================== 描画 ===================== */
-function renderWorkspaceView(){
-  const isTaskView = currentWorkspaceView === WORKSPACE_VIEW.TASKS;
-  const views = [[WORKSPACE_VIEW.TASKS,'taskManagementView','taskTabBtn'],
-    [WORKSPACE_VIEW.DEBUG,'debugSheetView','debugTabBtn'], [WORKSPACE_VIEW.AGENDA,'agendaSheetView','agendaTabBtn']];
-  views.forEach(([view,panelId,buttonId])=>{
-    const active = currentWorkspaceView === view;
-    document.getElementById(panelId).classList.toggle('active', active);
-    document.getElementById(buttonId).classList.toggle('active', active);
-    document.getElementById(buttonId).setAttribute('aria-selected', String(active));
-  });
-  document.getElementById('viewbar').style.display = isTaskView ? '' : 'none';
-}
-function changeWorkspaceView(nextView){
-  if(!Object.values(WORKSPACE_VIEW).includes(nextView)) return;
-  if(document.activeElement && typeof document.activeElement.blur==='function') document.activeElement.blur();
-  currentWorkspaceView = nextView;
-  try{ localStorage.setItem('aliusTerraTaskBoard.workspaceView', nextView); }catch{}
-  renderWorkspaceView();
-}
-
 function render(){
   const rows = buildRows();
-  renderWorkspaceView();
   renderViewbar();
   renderAssigneeFilterBar();
   renderLeft(rows);
   renderRight(rows);
   renderHistory();
-  renderDebugIssues();
-  renderAgendaItems();
+  renderDebugSheet();
+  renderAgendaSheet();
   document.getElementById('todayBadge').textContent = '今日：'+todayStr().replace(/-/g,'/');
 }
 
@@ -1734,6 +1769,8 @@ function renderAssigneeFilterBar(){
     b.className = 'assignee-filter-btn' + (assigneeFilter===a ? ' active' : '');
     b.textContent = a.charAt(0);
     b.title = a + (assigneeFilter===a ? '（表示中・もう一度押すと解除）' : 'だけを表示');
+    b.setAttribute('aria-label',a);
+    b.setAttribute('aria-pressed',String(assigneeFilter===a));
     b.onclick = ()=>{
       assigneeFilter = (assigneeFilter===a) ? null : a;
       render();
@@ -1811,21 +1848,27 @@ function buildLeftRow(r){
   nameInput.title = r.task.name;
   nameInput.addEventListener('click', (e)=> e.stopPropagation());
   nameInput.addEventListener('dblclick', (e)=> e.stopPropagation());
-  bindSynchronizedTextInput(nameInput, (value)=>{
-    setField(r.path, 'name', value);
-  }, (value)=>{
-    const label = document.querySelector('.bar[data-task-id="'+r.task.id+'"] .label');
-    if(label) label.textContent = value;
-  });
-  nameInput.addEventListener('blur', (e)=>{
-    if(!e.target.value.trim()) commit();
+  bindSynchronizedTextInput(nameInput,value=>{
+    const path=findPath(r.task.id);if(path) setField(path,'name',value);
+  },value=>{
+    const label=document.querySelector('.bar[data-task-id="'+r.task.id+'"] .label');
+    if(label) label.textContent=value;
   });
   nameCell.appendChild(nameInput);
   row.appendChild(nameCell);
 
+  const branchSelect = createWorkBranchSelect(r.task.repo,value=>{
+    const path=findPath(r.task.id);
+    if(!path) return;
+    setField(path,'repo',value);
+    saveNow();
+  });
+  row.appendChild(branchSelect);
+
   // progress（丸バッジの選択式）
   const progSel = document.createElement('select');
-  progSel.className='progress-select'+(r.task.status===100?' progress-complete':'');
+  progSel.className='select-pill progress-select'+(r.task.status===100?' progress-complete':'');
+  progSel.setAttribute('aria-label','進捗');
   PROGRESS_OPTIONS.forEach(p=>{
     const o = document.createElement('option');
     o.value=p.v; o.textContent=p.label;
@@ -1843,9 +1886,24 @@ function buildLeftRow(r){
   progCell.appendChild(progSel);
   row.appendChild(progCell);
 
+  const prioritySelect = document.createElement('select');
+  prioritySelect.className='select-pill progress-select priority-select';
+  prioritySelect.dataset.priority=normalizePriority(r.task.priority);
+  prioritySelect.setAttribute('aria-label','優先度');
+  PRIORITY_OPTIONS.forEach(p=>{
+    const option = document.createElement('option');
+    option.value=p.id;option.textContent=p.label;option.selected=p.id===normalizePriority(r.task.priority);
+    prioritySelect.appendChild(option);
+  });
+  prioritySelect.addEventListener('change',e=>{
+    setField(findPath(r.task.id),'priority',e.target.value);commit();
+  });
+  row.appendChild(prioritySelect);
+
   // assignee
   const asSel = document.createElement('select');
-  asSel.className='mini';
+  asSel.className='select-pill task-assignee-select';
+  asSel.setAttribute('aria-label','担当者');
   ASSIGNEES.forEach(a=>{
     const o = document.createElement('option');
     o.value=a; o.textContent=a;
@@ -1917,7 +1975,6 @@ function openModal(path){
   setTimeout(()=>{ mName.focus(); mName.select(); }, 0);
 }
 function closeModal(){
-  if(modalOverlay.contains(document.activeElement)) document.activeElement.blur();
   modalOverlay.classList.remove('open');
   modalPath = null;
 }
@@ -1931,16 +1988,12 @@ document.getElementById('mSave').addEventListener('click', ()=>{
   const t = getNode(modalPath);
   t.name = mName.value.trim() || '新しいタスク';
   t.memo = mMemo.value;
-  markTaskDirty(t.id);
-  discardPendingServerData();
   closeModal();
-  render();
-  saveImmediately();
+  commit();
 });
 document.getElementById('mDelete').addEventListener('click', ()=>{
   if(!modalPath) return;
   const p = modalPath;
-  discardPendingServerData();
   closeModal();
   deleteTask(p);
 });
@@ -2067,6 +2120,7 @@ function renderRight(rows){
     cell.className='mcell';
     if(m){
       cell.style.background = m.color;
+      cell.classList.add('has-color');
       cell.textContent = m.text;
       cell.title = m.text+'（ドラッグで日付を移動できます）';
       cell.style.cursor = 'grab';
@@ -2247,7 +2301,8 @@ function buildBar(r, rowTop, range){
 function applyBarColor(bar, t, isMain){
   if(!t.color) return;
   if(isMain){
-    bar.style.background = '#ffffff';
+    bar.style.background = 'var(--panel)';
+    bar.style.color = 'var(--ink)';
     bar.style.borderColor = t.color;
   } else {
     bar.style.background = hexToRgba(t.color, 1);
@@ -2572,136 +2627,157 @@ function onResizeUp(){
   window.removeEventListener('mouseup', onResizeUp);
 }
 
-/* ===================== 作業履歴 ===================== */
-const HISTORY_PANEL_STATE = Object.freeze({EXPANDED:'EXPANDED', COLLAPSED:'COLLAPSED', RESIZING:'RESIZING'});
-const HISTORY_PANEL_STORAGE_KEY = 'aliusTerraTaskBoard.historyPanel';
-let historyPanel = {state:HISTORY_PANEL_STATE.EXPANDED, preferredHeight:240, resizeStart:null};
-function historyPanelBounds(){
-  const max = Math.max(1, Math.floor(window.innerHeight / 3));
-  return {min:Math.min(160,max), max};
+/* ===================== 行の詳細案内 ===================== */
+const rowDetailHint = document.getElementById('rowDetailHint');
+document.querySelectorAll('.detail-info').forEach(icon=>{
+  function showHint(){
+    const bounds = icon.getBoundingClientRect();
+    const above = bounds.top >= 48;
+    rowDetailHint.classList.toggle('above',above);
+    rowDetailHint.style.setProperty('--hint-top',(above ? bounds.top-6 : bounds.bottom+6)+'px');
+    rowDetailHint.style.setProperty('--hint-left',bounds.left+'px');
+    if(!rowDetailHint.matches(':popover-open')) rowDetailHint.showPopover();
+  }
+  icon.addEventListener('mouseenter',showHint);
+  icon.addEventListener('mouseleave',closeRowDetailHint);
+  icon.addEventListener('focus',()=>{
+    if(icon.matches(':focus-visible')) showHint();
+  });
+  icon.addEventListener('blur',closeRowDetailHint);
+  icon.addEventListener('keydown',event=>{
+    if(event.key==='Escape') closeRowDetailHint();
+  });
+});
+document.addEventListener('contextmenu',closeRowDetailHint);
+window.addEventListener('scroll',closeRowDetailHint);
+function closeRowDetailHint(){
+  if(rowDetailHint.matches(':popover-open')) rowDetailHint.hidePopover();
 }
-function clampHistoryPanelHeight(height){
-  const bounds = historyPanelBounds();
-  return Math.max(bounds.min, Math.min(bounds.max, Number.isFinite(height) ? height : 240));
+/* ===================== タスク・作業履歴エリアの開閉と高さ ===================== */
+function boardSectionMaxHeight(name){
+  if(name==='history')return Math.max(1,Math.floor(window.innerHeight/3));
+  // 従来のタスク表の高さに、開閉見出しと高さ調整バーの分を足す。
+  return Math.max(420,Math.floor(window.innerHeight*.65))+58;
 }
-function saveHistoryPanelPreference(){
+function initBoardSection(name, initialHeight, minHeight){
+  const section = document.getElementById(name+'Section');
+  const content = document.getElementById(name+'Content');
+  const resizer = document.getElementById(name+'Resizer');
+  const toggle = document.getElementById(name+'Toggle');
+  const triangle = document.getElementById(name+'Triangle');
+  const key = 'aliusTerraTaskBoard.'+name+'Panel.v1';
+  const settings = {height:initialHeight,closed:false};
   try{
-    localStorage.setItem(HISTORY_PANEL_STORAGE_KEY, JSON.stringify({
-      state:historyPanel.state === HISTORY_PANEL_STATE.COLLAPSED ? HISTORY_PANEL_STATE.COLLAPSED : HISTORY_PANEL_STATE.EXPANDED,
-      height:historyPanel.preferredHeight,
-    }));
-  }catch{}
-}
-function renderHistoryPanel(){
-  const section = document.getElementById('historySection');
-  const toggle = document.getElementById('historyToggleBtn');
-  const resizer = document.getElementById('historyResizer');
-  const expanded = historyPanel.state !== HISTORY_PANEL_STATE.COLLAPSED;
-  const bounds = historyPanelBounds();
-  const height = clampHistoryPanelHeight(historyPanel.preferredHeight);
-  section.dataset.panelState = historyPanel.state;
-  section.style.height = expanded ? height+'px' : 'auto';
-  toggle.setAttribute('aria-expanded', String(expanded));
-  toggle.setAttribute('aria-label', expanded ? '作業履歴を閉じる' : '作業履歴を展開する');
-  toggle.title = expanded ? '作業履歴を閉じる' : '作業履歴を展開する';
-  toggle.querySelector('span').textContent = expanded ? '▼' : '▶';
-  resizer.setAttribute('aria-valuemin', String(bounds.min));
-  resizer.setAttribute('aria-valuemax', String(bounds.max));
-  resizer.setAttribute('aria-valuenow', String(Math.round(height)));
-}
-function setHistoryPanelExpanded(expanded){
-  const section = document.getElementById('historySection');
-  if(!expanded && section.contains(document.activeElement)) document.activeElement.blur();
-  historyPanel.state = expanded ? HISTORY_PANEL_STATE.EXPANDED : HISTORY_PANEL_STATE.COLLAPSED;
-  renderHistoryPanel();
-  saveHistoryPanelPreference();
-}
-function finishHistoryPanelResize(event){
-  if(historyPanel.state !== HISTORY_PANEL_STATE.RESIZING || historyPanel.resizeStart.pointerId !== event.pointerId) return;
-  const resizer = document.getElementById('historyResizer');
-  document.body.style.userSelect = historyPanel.resizeStart.previousUserSelect;
-  historyPanel.resizeStart = null;
-  historyPanel.state = HISTORY_PANEL_STATE.EXPANDED;
-  if(resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
-  renderHistoryPanel();
-  saveHistoryPanelPreference();
-}
-function initializeHistoryPanel(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(HISTORY_PANEL_STORAGE_KEY) || 'null');
-    if(saved){
-      historyPanel.state = saved.state === HISTORY_PANEL_STATE.COLLAPSED ? HISTORY_PANEL_STATE.COLLAPSED : HISTORY_PANEL_STATE.EXPANDED;
-      if(Number.isFinite(saved.height)) historyPanel.preferredHeight = saved.height;
+    const saved=JSON.parse(localStorage.getItem(key) || 'null');
+    if(saved)Object.assign(settings,saved);
+    else if(name==='history'){
+      const previous=JSON.parse(localStorage.getItem('aliusTerraTaskBoard.historyPanel') || 'null');
+      if(previous){settings.height=previous.height;settings.closed=previous.state==='COLLAPSED';}
     }
   }catch{}
-  const resizer = document.getElementById('historyResizer');
-  document.getElementById('historyToggleBtn').addEventListener('click', ()=>{
-    setHistoryPanelExpanded(historyPanel.state === HISTORY_PANEL_STATE.COLLAPSED);
+  function clampHeight(height){
+    return Math.max(Math.min(minHeight,boardSectionMaxHeight(name)),Math.min(boardSectionMaxHeight(name),height));
+  }
+  function shownHeight(){
+    return clampHeight(Number(settings.height) || boardSectionMaxHeight(name));
+  }
+  function refresh(){
+    const height = shownHeight();
+    const closed = Boolean(settings.closed);
+    section.style.setProperty('--section-height',height+'px');
+    section.classList.toggle('collapsed',closed);
+    content.hidden=closed;
+    toggle.setAttribute('aria-expanded',String(!closed));
+    triangle.textContent=closed ? '▶' : '▼';
+    resizer.setAttribute('aria-valuemin',String(minHeight));
+    resizer.setAttribute('aria-valuemax',String(boardSectionMaxHeight(name)));
+    resizer.setAttribute('aria-valuenow',String(height));
+  }
+  function persist(){
+    try{localStorage.setItem(key,JSON.stringify(settings));}catch{}
+  }
+  function setClosed(closed){
+    if(closed && section.contains(document.activeElement))document.activeElement.blur();
+    settings.closed=closed;
+    refresh();
+    persist();
+  }
+  toggle.addEventListener('click',()=>setClosed(!settings.closed));
+  resizer.addEventListener('pointerdown',e=>{
+    if(e.button!==0) return;
+    e.preventDefault();
+    const startY=e.clientY, startHeight=section.getBoundingClientRect().height;
+    resizer.setPointerCapture(e.pointerId);
+    const move=event=>{
+      settings.height=clampHeight(startHeight+startY-event.clientY);
+      refresh();
+    };
+    const finish=()=>{
+      resizer.removeEventListener('pointermove',move);
+      resizer.removeEventListener('lostpointercapture',finish);
+      persist();
+    };
+    resizer.addEventListener('pointermove',move);
+    resizer.addEventListener('lostpointercapture',finish);
   });
-  resizer.addEventListener('pointerdown', event=>{
-    if(event.button !== 0 || historyPanel.state === HISTORY_PANEL_STATE.COLLAPSED) return;
-    event.preventDefault();
-    const section = document.getElementById('historySection');
-    if(section.contains(document.activeElement)) document.activeElement.blur();
-    historyPanel.resizeStart = {pointerId:event.pointerId, y:event.clientY,
-      height:section.getBoundingClientRect().height, previousUserSelect:document.body.style.userSelect};
-    historyPanel.state = HISTORY_PANEL_STATE.RESIZING;
-    resizer.setPointerCapture(event.pointerId);
-    document.body.style.userSelect = 'none';
-    renderHistoryPanel();
+  resizer.addEventListener('keydown',e=>{
+    if(!['ArrowUp','ArrowDown','Home','End'].includes(e.key)) return;
+    e.preventDefault();
+    settings.height=e.key==='Home' ? minHeight : e.key==='End' ? null
+      : clampHeight(shownHeight()+(e.key==='ArrowUp' ? 16 : -16));
+    refresh();
+    persist();
   });
-  resizer.addEventListener('pointermove', event=>{
-    if(historyPanel.state !== HISTORY_PANEL_STATE.RESIZING || historyPanel.resizeStart.pointerId !== event.pointerId) return;
-    historyPanel.preferredHeight = clampHistoryPanelHeight(historyPanel.resizeStart.height + historyPanel.resizeStart.y - event.clientY);
-    renderHistoryPanel();
-  });
-  resizer.addEventListener('pointerup', finishHistoryPanelResize);
-  resizer.addEventListener('pointercancel', finishHistoryPanelResize);
-  resizer.addEventListener('lostpointercapture', finishHistoryPanelResize);
-  resizer.addEventListener('keydown', event=>{
-    const bounds = historyPanelBounds();
-    const current = clampHistoryPanelHeight(historyPanel.preferredHeight);
-    const heights = {ArrowUp:current+16, ArrowDown:current-16, Home:bounds.min, End:bounds.max};
-    if(!(event.key in heights)) return;
-    event.preventDefault();
-    historyPanel.preferredHeight = clampHistoryPanelHeight(heights[event.key]);
-    renderHistoryPanel();
-    saveHistoryPanelPreference();
-  });
-  window.addEventListener('resize', renderHistoryPanel);
-  renderHistoryPanel();
+  window.addEventListener('resize',refresh);
+  refresh();
+  return {open:()=>setClosed(false)};
+}
+const taskPanel = initBoardSection('task',null,240);
+const historyPanel = initBoardSection('history',Math.min(240,Math.floor(window.innerHeight/3)),160);
+
+/* ===================== 作業履歴 ===================== */
+function nextHistoryCreatedAt(){
+  const latest=state.history.reduce((max,entry)=>
+    Number.isSafeInteger(entry.createdAt) && entry.createdAt>max ? entry.createdAt : max,0);
+  return Math.max(Date.now(),latest+1);
+}
+function recordCompletion(kind,item){
+  const entry = window.ALIUS_TERRA_COMPLETION.createHistory(kind,item,todayStr());
+  // 元項目ごとに一つ。再完了・別端末からの保存でも同じ履歴IDを使う。
+  if(state.history.some(h=>h.id===entry.id)) return;
+  entry.createdAt=nextHistoryCreatedAt();
+  state.history.push(entry);
+  markHistoryDirty(entry.id);
+  renderHistory();
 }
 function addHistoryEntry(){
-  setHistoryPanelExpanded(true);
+  historyPanel.open();
   const h = {
     id:newId('h'),
     content:'',
     repo:'',
     assignee: currentUser || ASSIGNEES[0],
     date: todayStr(),
+    createdAt:nextHistoryCreatedAt(),
   };
-  state.history.push(h);
+  state.history.unshift(h);
   markHistoryDirty(h.id);
   commit();
   requestAnimationFrame(()=>{
-    const firstInput = document.querySelector('#historyRows .hrow input[type=text]');
-    if(firstInput) firstInput.focus();
+    const newInput = document.querySelector('#historyRows .hrow[data-history-id="'+h.id+'"] input[type=text]');
+    if(newInput) newInput.focus();
+    document.getElementById('historyTable').scrollTop=0;
   });
 }
 function deleteHistoryEntry(id){
-  // 削除・通常の保存ではDiscordへ投稿しない。登録済みのスナップショットは保持する。
-  pendingHistoryNotifications.delete(id);
-  latestHistoryNotificationRevisions.delete(id);
-  historyRegistrationOperations.delete(id);
   markHistoryDeleted(id);
   state.history = state.history.filter(h=>h.id!==id);
   commit();
 }
 function renderHistory(){
-  renderHistoryPanel();
   const wrap = document.getElementById('historyRows');
   wrap.innerHTML='';
-  const sorted = state.history.slice().sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:0);
+  const sorted = state.history.slice().sort(compareHistoryEntries);
   if(sorted.length===0){
     const e = document.createElement('div');
     e.className='history-empty';
@@ -2713,45 +2789,90 @@ function renderHistory(){
     wrap.appendChild(buildHistoryRow(h));
   });
 }
+function compareHistoryEntries(a,b){
+  const timestamp=entry=>Number.isSafeInteger(entry.createdAt) && entry.createdAt>0 ? entry.createdAt : 0;
+  const created=timestamp(b)-timestamp(a);
+  if(created) return created;
+  return String(b.date || '').localeCompare(String(a.date || ''));
+}
+function findHistoryEntryById(id){
+  return state.history.find(entry=>entry.id===id) || null;
+}
+function setHistoryField(id, field, value){
+  const entry = findHistoryEntryById(id);
+  if(!entry) return false;
+  if(entry[field] === value) return false;
+  entry[field] = value;
+  markHistoryDirty(id);
+  refreshHistoryDiscordButtons(id);
+  return true;
+}
+function bindHistoryTextInput(input,historyId,field){
+  bindSynchronizedTextInput(input,value=>setHistoryField(historyId,field,value));
+  input.addEventListener('compositionstart',()=>{historyComposingIds.add(historyId);refreshHistoryDiscordButtons(historyId);});
+  input.addEventListener('compositionend',()=>{historyComposingIds.delete(historyId);refreshHistoryDiscordButtons(historyId);});
+  input.addEventListener('blur',()=>{historyComposingIds.delete(historyId);refreshHistoryDiscordButtons(historyId);});
+}
+function createWorkBranchSelect(current,saveBranch){
+  const branchSelect = document.createElement('select');
+  branchSelect.className='select-pill branch-select';
+  branchSelect.setAttribute('aria-label','作業ブランチ');
+  workBranchOptions(current).forEach(branch=>{
+    const option=document.createElement('option');
+    option.value=branch.value;option.textContent=branch.label;option.disabled=branch.disabled;
+    branchSelect.appendChild(option);
+  });
+  branchSelect.value=current==='main' ? '' : current || '';
+  branchSelect.title=current || 'GitHubで確認した作業ブランチを選択（mainは対象外）';
+  branchSelect.addEventListener('change',()=>{
+    const value=branchSelect.value;
+    if(value!=='' && !WORK_BRANCHES.includes(value)) return;
+    branchSelect.title=value || '作業ブランチを選択';
+    saveBranch(value);
+  });
+  return branchSelect;
+}
+function openHistoryDetail(id){
+  const entry=findHistoryEntryById(id);
+  if(!entry) return;
+  document.getElementById('historyDetailContent').textContent=entry.content || '未入力';
+  document.getElementById('historyDetailBranch').textContent=entry.repo || '未設定';
+  document.getElementById('historyDetailAssignee').textContent=entry.assignee || '未設定';
+  document.getElementById('historyDetailDate').textContent=entry.date || '未設定';
+  document.getElementById('historyDetail').showModal();
+}
 function buildHistoryRow(h){
   const row = document.createElement('div');
   row.className='hrow';
   row.dataset.historyId = h.id;
+  row.addEventListener('contextmenu',e=>{
+    e.preventDefault();
+    openHistoryDetail(h.id);
+  });
 
   const contentInput = document.createElement('input');
   contentInput.type='text';
   contentInput.value = h.content;
   contentInput.placeholder='作業内容';
-  bindSynchronizedTextInput(contentInput, (value)=>{
-    h.content = value;
-    markHistoryDirty(h.id);
-    updateHistoryRegistrationRow(row, h);
-  });
+  bindHistoryTextInput(contentInput, h.id, 'content');
   row.appendChild(contentInput);
 
-  const repoInput = document.createElement('input');
-  repoInput.type='text';
-  repoInput.value = h.repo;
-  repoInput.placeholder='Unity / UI / Spine / 企画 など';
-  bindSynchronizedTextInput(repoInput, (value)=>{
-    h.repo = value;
-    markHistoryDirty(h.id);
-    updateHistoryRegistrationRow(row, h);
-  });
-  row.appendChild(repoInput);
+  row.appendChild(createWorkBranchSelect(h.repo,value=>{
+    if(setHistoryField(h.id,'repo',value)) saveNow();
+  }));
 
   const asSel = document.createElement('select');
-  ASSIGNEES.forEach(a=>{
+  asSel.className='select-pill';
+  asSel.setAttribute('aria-label','担当者');
+  const historyAssignees=ASSIGNEES.includes(h.assignee) ? ASSIGNEES : [h.assignee || '未設定',...ASSIGNEES];
+  historyAssignees.forEach(a=>{
     const o = document.createElement('option');
     o.value=a; o.textContent=a;
     if(a===h.assignee) o.selected=true;
     asSel.appendChild(o);
   });
   asSel.addEventListener('change', (e)=>{
-    h.assignee = e.target.value;
-    markHistoryDirty(h.id);
-    updateHistoryRegistrationRow(row, h);
-    scheduleSave();
+    if(setHistoryField(h.id, 'assignee', e.target.value)) saveNow();
   });
   row.appendChild(asSel);
 
@@ -2759,11 +2880,22 @@ function buildHistoryRow(h){
   dateInput.type='date';
   dateInput.value = h.date;
   dateInput.addEventListener('change', (e)=>{
-    h.date = e.target.value || todayStr();
-    markHistoryDirty(h.id);
-    commit();
+    if(setHistoryField(h.id, 'date', e.target.value || todayStr())){
+      renderHistory();
+      saveNow();
+    }
   });
   row.appendChild(dateInput);
+
+  const registrationButton = document.createElement('button');
+  registrationButton.type = 'button';
+  registrationButton.className = 'history-discord-btn';
+  // 入力欄のblurで保留中の再描画が先に走ると、clickの対象が消えてしまう。
+  // フォーカスを維持し、登録処理の中で確定値を保存してから通知を予約する。
+  registrationButton.addEventListener('mousedown', event=>event.preventDefault());
+  registrationButton.addEventListener('click', ()=>registerHistoryForDiscord(h.id));
+  row.appendChild(registrationButton);
+  refreshHistoryDiscordButton(registrationButton, h);
 
   const delBtn = document.createElement('button');
   delBtn.className='icon-del';
@@ -2772,352 +2904,500 @@ function buildHistoryRow(h){
   delBtn.addEventListener('click', ()=> deleteHistoryEntry(h.id));
   row.appendChild(delBtn);
 
-  const registrationButton = document.createElement('button');
-  registrationButton.type='button';
-  registrationButton.className='history-registration';
-  // 入力欄のblurによる再描画でクリックが消えないよう、確定は登録処理が行う。
-  registrationButton.addEventListener('pointerdown', event=>event.preventDefault());
-  registrationButton.addEventListener('click', ()=> registerHistoryEntry(h.id));
-  row.appendChild(registrationButton);
-  updateHistoryRegistrationRow(row, h);
-
   return row;
-}
-function updateHistoryRegistrationRow(row, history){
-  const button = row.querySelector('.history-registration');
-  if(!button) return;
-  const registrationState = getHistoryRegistrationState(history);
-  button.dataset.state = registrationState;
-  button.textContent = registrationState === HISTORY_REGISTRATION_STATE.REGISTERED ? '登録' :
-    registrationState === HISTORY_REGISTRATION_STATE.REGISTERING ? '登録中…' : '未登録';
-  button.disabled = registrationState === HISTORY_REGISTRATION_STATE.REGISTERED || registrationState === HISTORY_REGISTRATION_STATE.REGISTERING;
-  button.title = registrationState === HISTORY_REGISTRATION_STATE.REGISTERED ? 'この内容はDiscordへの投稿受付済みです' :
-    registrationState === HISTORY_REGISTRATION_STATE.REGISTERING ? '登録を保存しています' :
-    registrationState === HISTORY_REGISTRATION_STATE.ERROR ? '登録に失敗しました。押すと再試行します' : '押すと、この内容をDiscordへ投稿します';
-  row.querySelectorAll('input,select,.icon-del').forEach(input=>{
-    input.disabled = registrationState === HISTORY_REGISTRATION_STATE.REGISTERING;
-  });
 }
 document.getElementById('addHistoryBtn').addEventListener('click', addHistoryEntry);
 
+/* ===================== Discord通知の明示的な登録 ===================== */
+// Webhookやサービスアカウントはブラウザへ渡さない。同じ内容は同じキーで登録する。
+const historyComposingIds = new Set();
+const historyRegisteringIds = new Set();
+let legacyHistoryNotifications={};
+let historyDiscordQueue = {};
+let historyDiscordReceipts = {};
+let historyDiscordQueueRef = null;
+let historyDiscordQueueLoaded = false;
+let historyDiscordReceiptsLoaded = false;
+let historyDiscordReceiptsRef=null;
+const HISTORY_DISCORD = window.ALIUS_TERRA_HISTORY_DISCORD;
+
+function historyDiscordAvailable(){
+  return APP_CONFIG.discordNotificationsEnabled === true && firebaseReady &&
+    !!firebaseAuth?.currentUser && historyDiscordQueueLoaded && historyDiscordReceiptsLoaded;
+}
+function refreshHistoryDiscordButtons(historyId){
+  document.querySelectorAll('#historyRows .hrow').forEach(row=>{
+    if(historyId && row.dataset.historyId !== historyId) return;
+    const entry = findHistoryEntryById(row.dataset.historyId);
+    const button = row.querySelector('.history-discord-btn');
+    if(entry && button) refreshHistoryDiscordButton(button, entry);
+  });
+}
+async function refreshHistoryDiscordButton(button, entry){
+  const signature = HISTORY_DISCORD.signature(entry);
+  button.dataset.signature = signature;
+  button.textContent = historyRegisteringIds.has(entry.id) ? '登録中…' : '未登録';
+  button.dataset.registration = 'unregistered';
+  button.disabled = true;
+  if(!historyDiscordAvailable()){
+    button.title = APP_CONFIG.discordNotificationsEnabled === true
+      ? 'Firebaseの通知データに接続中です。' : 'Discord通知は接続設定待ちです。';
+    return;
+  }
+  try{
+    const key = await HISTORY_DISCORD.eventKey(entry);
+    if(button.dataset.signature !== signature) return;
+    let status = HISTORY_DISCORD.registrationState(key, historyDiscordQueue, historyDiscordReceipts);
+    const legacy=legacyHistoryNotifications[entry.id];
+    if(status==='unregistered' && legacy?.trigger==='manual' && legacy.operation==='saved' &&
+      HISTORY_DISCORD.signature(legacy.entry || {})===signature) status='pending';
+    button.dataset.registration = status;
+    button.textContent = historyRegisteringIds.has(entry.id) ? '登録中…'
+      : status === 'unregistered' ? '未登録'
+      : status === 'error' || status === 'uncertain' ? '要確認' : '登録済み';
+    button.title = status === 'sent' ? '開発管理ログへ投稿済みです。'
+      : status === 'pending' ? '登録済みです。約1分を目安にDiscordへ送信します。'
+      : status === 'uncertain' ? '送信結果を確定できませんでした。Discord側を確認してください。自動再投稿はしません。'
+      : status === 'error' ? '送信設定の確認が必要です。管理者へ連絡してください。'
+      : entry.autoRegister ? '完了内容を自動登録中です。約1分を目安に通知されます。'
+      : '押すと、この内容を開発管理ログへ投稿します。';
+    button.disabled = status !== 'unregistered' || historyRegisteringIds.has(entry.id) ||
+      historyComposingIds.has(entry.id);
+  }catch(error){ button.title = error.message; }
+}
+async function registerHistoryForDiscord(historyId){
+  if(!historyDiscordAvailable() || historyRegisteringIds.has(historyId) || historyComposingIds.has(historyId)) return;
+  if(textEditing.state===TEXT_EDIT_STATE.COMPOSING) return;
+  if(textEditing.element) finishTextEditing(textEditing.element);
+  const entry=findHistoryEntryById(historyId);if(!entry)return;
+  const savingUserId=firebaseAuth.currentUser.uid;
+  historyRegisteringIds.add(historyId);
+  refreshHistoryDiscordButtons(historyId);
+  try{
+    const value = HISTORY_DISCORD.validate(entry);
+    const key = await HISTORY_DISCORD.eventKey(value);
+    if(firebaseAuth.currentUser?.uid!==savingUserId || !historyDiscordQueueRef)return;
+    if(HISTORY_DISCORD.signature(findHistoryEntryById(historyId) || {}) !== HISTORY_DISCORD.signature(value)){
+      throw new Error('内容が変更されました。入力を確定してから再登録してください。');
+    }
+    await boardRef.update({['history/' + historyId]:{...findHistoryEntryById(historyId)}});
+    if(firebaseAuth.currentUser?.uid!==savingUserId || !historyDiscordQueueRef)return;
+    if(HISTORY_DISCORD.signature(findHistoryEntryById(historyId) || {}) !== HISTORY_DISCORD.signature(value)){
+      throw new Error('保存中に内容が変更されました。入力を確定してから再登録してください。');
+    }
+    dirtyHistoryIds.delete(historyId);
+    const payload = {historyId, snapshot:value, requestedAt:firebase.database.ServerValue.TIMESTAMP,
+      requestedBy:firebase.auth().currentUser.uid, status:'pending'};
+    const result = await historyDiscordQueueRef.child(key).transaction(
+      current=>current === null ? payload : undefined, undefined, false);
+    historyDiscordQueue[key] = result.snapshot.val();
+    document.getElementById('historyDiscordNote').textContent =
+      'Discordへ登録しました。開発管理ログへの投稿をお待ちください。';
+  }catch(error){
+    console.error('Discord通知の登録に失敗しました', error);
+    document.getElementById('historyDiscordNote').textContent =
+      '登録できませんでした。内容とFirebaseへの接続を確認してください。';
+  }finally{
+    historyRegisteringIds.delete(historyId);
+    refreshHistoryDiscordButtons(historyId);
+  }
+}
+function stopHistoryDiscordSync(){
+  historyDiscordQueueRef?.off();historyDiscordReceiptsRef?.off();
+  historyDiscordQueueRef=null;historyDiscordReceiptsRef=null;
+  historyDiscordQueue={};historyDiscordReceipts={};historyDiscordQueueLoaded=false;historyDiscordReceiptsLoaded=false;
+  historyRegisteringIds.clear();historyComposingIds.clear();
+}
+function startHistoryDiscordSync(){
+  stopHistoryDiscordSync();
+  const note = document.getElementById('historyDiscordNote');
+  if(APP_CONFIG.discordNotificationsEnabled !== true){
+    note.textContent = 'Discord通知は接続設定待ちです。設定が終わるまで投稿されません。';
+    return;
+  }
+  note.textContent = '完了・解決済みにすると自動通知します。手動の履歴は「未登録」から投稿できます。';
+  if(!firebaseReady){ note.textContent = 'Discordへの登録にはFirebaseへの接続が必要です。'; return; }
+  const rootPath=APP_CONFIG.boardPath;
+  historyDiscordQueueRef = firebase.database().ref(rootPath + '/historyDiscordQueue');
+  const receiptsRef=historyDiscordReceiptsRef=firebase.database().ref(rootPath+'/historyDiscordReceipts');
+  const onError = ()=>{
+    historyDiscordQueueLoaded = false;
+    historyDiscordReceiptsLoaded = false;
+    note.textContent = '通知データへの接続に失敗しました。管理者へ連絡してください。';
+    refreshHistoryDiscordButtons();
+  };
+  historyDiscordQueueRef.on('value', snapshot=>{
+    historyDiscordQueue = snapshot.val() || {};
+    historyDiscordQueueLoaded = true;
+    refreshHistoryDiscordButtons();
+  }, onError);
+  receiptsRef.on('value', snapshot=>{
+    historyDiscordReceipts = snapshot.val() || {};
+    historyDiscordReceiptsLoaded = true;
+    refreshHistoryDiscordButtons();
+  }, onError);
+}
+
 /* ===================== デバッグシート ===================== */
-const DEBUG_MODAL_STATE = Object.freeze({
-  CLOSED: 'CLOSED',
-  EDITING: 'EDITING',
-});
-let debugModal = {
-  state: DEBUG_MODAL_STATE.CLOSED,
-  issueId: null,
-};
-
-const debugIssueModalOverlay = document.getElementById('debugIssueModalOverlay');
-const debugIssueTitle = document.getElementById('debugIssueTitle');
-const debugIssueSummary = document.getElementById('debugIssueSummary');
-
 function makeDebugIssue(){
   return {
-    id: newId('d'),
-    title: '新しい問題',
-    summary: '',
-    status: DEBUG_STATUS_OPTIONS[0],
-    occurredDate: todayStr(),
-    resolvedDate: '',
+    id:newId('d'),
+    title:'新しい問題',
+    summary:'',
+    status:'open',
+    assignee:currentUser || ASSIGNEES[0],
+    occurredDate:todayStr(),
+    resolvedDate:'',
   };
 }
-function findDebugIssue(id){
+function findDebugIssueById(id){
   return state.debugIssues.find(issue=>issue.id===id) || null;
+}
+function setDebugIssueField(id, field, value){
+  const issue = findDebugIssueById(id);
+  if(!issue) return false;
+  if(issue[field]===value) return false;
+  const previous=issue[field];
+  issue[field] = value;
+  if(field==='status' && previous!=='resolved' && value==='resolved'){
+    if(!issue.resolvedDate) issue.resolvedDate=todayStr();
+    recordCompletion('debug',issue);
+  }
+  markDebugIssueDirty(id);
+  return true;
 }
 function addDebugIssue(){
   const issue = makeDebugIssue();
   state.debugIssues.push(issue);
   markDebugIssueDirty(issue.id);
-  commit();
+  renderDebugSheet();
+  saveNow();
   requestAnimationFrame(()=>{
-    const input = document.querySelector('[data-debug-issue-id="'+issue.id+'"] input[type=text]');
+    const input = document.querySelector('.drow[data-debug-id="'+issue.id+'"] input[type=text]');
     if(input){ input.focus(); input.select(); }
   });
 }
 function deleteDebugIssue(id){
-  if(!findDebugIssue(id)) return;
+  if(!findDebugIssueById(id)) return;
   markDebugIssueDeleted(id);
   state.debugIssues = state.debugIssues.filter(issue=>issue.id!==id);
-  discardPendingServerData();
-  render();
-  saveImmediately();
+  if(debugModalIssueId===id) closeDebugModal();
+  renderDebugSheet();
+  saveNow();
 }
-function renderDebugIssues(){
-  const wrap = document.getElementById('debugIssueRows');
-  wrap.innerHTML = '';
-  if(state.debugIssues.length===0){
+function bindDebugTitleInput(input,id){bindSynchronizedTextInput(input,value=>setDebugIssueField(id,'title',value));}
+function renderDebugSheet(){
+  const wrap = document.getElementById('debugRows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  const sorted = state.debugIssues.slice().sort((a,b)=>{
+    const aResolved = a.status==='resolved';
+    const bResolved = b.status==='resolved';
+    if(aResolved!==bResolved) return aResolved ? 1 : -1;
+    return (b.occurredDate || '').localeCompare(a.occurredDate || '');
+  });
+  if(sorted.length===0){
     const empty = document.createElement('div');
-    empty.className = 'debug-empty';
-    empty.textContent = 'まだ問題はありません。「＋ 問題を追加」から記録できます。';
+    empty.className='debug-empty';
+    empty.textContent='問題はまだ登録されていません。「＋ 問題を追加」から記録できます。';
     wrap.appendChild(empty);
     return;
   }
-  state.debugIssues.forEach(issue=> wrap.appendChild(buildDebugIssueRow(issue)));
+  sorted.forEach(issue=> wrap.appendChild(buildDebugRow(issue)));
 }
-function buildDebugIssueRow(issue){
+function buildDebugRow(issue){
   const row = document.createElement('div');
-  row.className = 'debug-grid debug-issue-row';
-  row.dataset.debugIssueId = issue.id;
+  row.className='drow';
+  row.dataset.debugId=issue.id;
+  row.title='右クリックで問題の概要を表示';
+  row.addEventListener('contextmenu', (e)=>{
+    e.preventDefault();
+    openDebugModal(issue.id);
+  });
 
   const titleInput = document.createElement('input');
-  titleInput.type = 'text';
-  titleInput.value = issue.title;
-  titleInput.placeholder = '発生している問題';
-  titleInput.title = '右クリックで概要を表示・編集';
-  bindSynchronizedTextInput(titleInput, (value)=>{
-    issue.title = value;
-    markDebugIssueDirty(issue.id);
-  });
-  titleInput.addEventListener('contextmenu', (event)=>{
-    event.preventDefault();
-    event.stopPropagation();
-    openDebugIssueModal(issue.id);
-  });
+  titleInput.type='text';
+  titleInput.value=issue.title || '新しい問題';
+  titleInput.placeholder='発生している問題';
+  bindDebugTitleInput(titleInput, issue.id);
   row.appendChild(titleInput);
 
   const statusSelect = document.createElement('select');
-  DEBUG_STATUS_OPTIONS.forEach(status=>{
-    const option = document.createElement('option');
-    option.value = status;
-    option.textContent = status;
-    option.selected = status === issue.status;
-    statusSelect.appendChild(option);
+  statusSelect.className='select-pill';
+  statusSelect.setAttribute('aria-label','対応状況');
+  DEBUG_STATUS_OPTIONS.forEach(option=>{
+    const el = document.createElement('option');
+    el.value=option.id;
+    el.textContent=option.label;
+    if(option.id===issue.status) el.selected=true;
+    statusSelect.appendChild(el);
   });
-  statusSelect.addEventListener('change', ()=>{
-    issue.status = statusSelect.value;
-    markDebugIssueDirty(issue.id);
-    scheduleSave();
+  statusSelect.addEventListener('change', (e)=>{
+    if(setDebugIssueField(issue.id, 'status', e.target.value)){
+      renderDebugSheet();
+      saveNow();
+    }
   });
   row.appendChild(statusSelect);
 
-  const occurredDateInput = document.createElement('input');
-  occurredDateInput.type = 'date';
-  occurredDateInput.value = issue.occurredDate;
-  occurredDateInput.addEventListener('change', ()=>{
-    issue.occurredDate = occurredDateInput.value || todayStr();
-    markDebugIssueDirty(issue.id);
-    scheduleSave();
+  row.appendChild(buildResponderSelect(issue,value=>{
+    setDebugIssueField(issue.id,'assignee',value);saveNow();
+  }));
+
+  const occurredInput = document.createElement('input');
+  occurredInput.type='date';
+  occurredInput.value=issue.occurredDate || todayStr();
+  occurredInput.addEventListener('change', (e)=>{
+    if(setDebugIssueField(issue.id, 'occurredDate', e.target.value || todayStr())){
+      renderDebugSheet();
+      saveNow();
+    }
   });
-  row.appendChild(occurredDateInput);
+  row.appendChild(occurredInput);
 
-  const resolvedDateInput = document.createElement('input');
-  resolvedDateInput.type = 'date';
-  resolvedDateInput.value = issue.resolvedDate;
-  resolvedDateInput.addEventListener('change', ()=>{
-    issue.resolvedDate = resolvedDateInput.value;
-    markDebugIssueDirty(issue.id);
-    scheduleSave();
+  const resolvedInput = document.createElement('input');
+  resolvedInput.type='date';
+  resolvedInput.value=issue.resolvedDate || '';
+  resolvedInput.addEventListener('change', (e)=>{
+    if(setDebugIssueField(issue.id, 'resolvedDate', e.target.value || '')) saveNow();
   });
-  row.appendChild(resolvedDateInput);
+  row.appendChild(resolvedInput);
 
-  const deleteButton = document.createElement('button');
-  deleteButton.className = 'debug-delete';
-  deleteButton.title = '削除';
-  deleteButton.textContent = '×';
-  deleteButton.addEventListener('click', ()=> deleteDebugIssue(issue.id));
-  row.appendChild(deleteButton);
-
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className='debug-delete';
+  deleteBtn.title='削除';
+  deleteBtn.textContent='×';
+  deleteBtn.addEventListener('contextmenu', (e)=> e.stopPropagation());
+  deleteBtn.addEventListener('click', ()=> deleteDebugIssue(issue.id));
+  row.appendChild(deleteBtn);
   return row;
 }
-function openDebugIssueModal(issueId){
-  const issue = findDebugIssue(issueId);
-  if(!issue) return;
-  debugModal = {state:DEBUG_MODAL_STATE.EDITING, issueId};
-  debugIssueTitle.value = issue.title;
-  debugIssueSummary.value = issue.summary;
-  debugIssueModalOverlay.classList.add('open');
-  setTimeout(()=>{ debugIssueTitle.focus(); debugIssueTitle.select(); }, 0);
-}
-function closeDebugIssueModal(){
-  if(debugIssueModalOverlay.contains(document.activeElement)) document.activeElement.blur();
-  debugIssueModalOverlay.classList.remove('open');
-  debugModal = {state:DEBUG_MODAL_STATE.CLOSED, issueId:null};
-}
-function saveDebugIssueModal(){
-  if(debugModal.state !== DEBUG_MODAL_STATE.EDITING) return;
-  const issue = findDebugIssue(debugModal.issueId);
-  if(!issue){ closeDebugIssueModal(); return; }
-  issue.title = debugIssueTitle.value.trim() || '新しい問題';
-  issue.summary = debugIssueSummary.value;
-  markDebugIssueDirty(issue.id);
-  discardPendingServerData();
-  closeDebugIssueModal();
-  render();
-  saveImmediately();
-}
 
-document.getElementById('taskTabBtn').addEventListener('click', ()=> changeWorkspaceView(WORKSPACE_VIEW.TASKS));
-document.getElementById('debugTabBtn').addEventListener('click', ()=> changeWorkspaceView(WORKSPACE_VIEW.DEBUG));
+const debugModalOverlay = document.getElementById('debugModalOverlay');
+const debugModalTitle = document.getElementById('debugModalTitle');
+const debugModalSummary = document.getElementById('debugModalSummary');
+let debugModalIssueId = null;
+function openDebugModal(id){
+  const issue = findDebugIssueById(id);
+  if(!issue) return;
+  debugModalIssueId = id;
+  debugModalTitle.value = issue.title || '新しい問題';
+  debugModalSummary.value = issue.summary || '';
+  debugModalOverlay.classList.add('open');
+  setTimeout(()=>{ debugModalSummary.focus(); }, 0);
+}
+function closeDebugModal(){
+  debugModalOverlay.classList.remove('open');
+  debugModalIssueId = null;
+}
+document.getElementById('debugModalClose').addEventListener('click', closeDebugModal);
+debugModalOverlay.addEventListener('click', (e)=>{ if(e.target===debugModalOverlay) closeDebugModal(); });
+document.getElementById('debugModalSave').addEventListener('click', ()=>{
+  if(!debugModalIssueId) return;
+  const id = debugModalIssueId;
+  setDebugIssueField(id, 'title', debugModalTitle.value.trim() || '新しい問題');
+  setDebugIssueField(id, 'summary', debugModalSummary.value);
+  closeDebugModal();
+  renderDebugSheet();
+  saveNow();
+});
+document.getElementById('debugModalDelete').addEventListener('click', ()=>{
+  if(debugModalIssueId) deleteDebugIssue(debugModalIssueId);
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape' && debugModalOverlay.classList.contains('open')) closeDebugModal();
+});
 document.getElementById('addDebugIssueBtn').addEventListener('click', addDebugIssue);
-document.getElementById('debugIssueModalClose').addEventListener('click', closeDebugIssueModal);
-document.getElementById('debugIssueSave').addEventListener('click', saveDebugIssueModal);
-document.getElementById('debugIssueDelete').addEventListener('click', ()=>{
-  if(debugModal.state !== DEBUG_MODAL_STATE.EDITING) return;
-  const issueId = debugModal.issueId;
-  closeDebugIssueModal();
-  deleteDebugIssue(issueId);
-});
-debugIssueModalOverlay.addEventListener('click', (event)=>{
-  if(event.target===debugIssueModalOverlay) closeDebugIssueModal();
-});
-document.addEventListener('keydown', (event)=>{
-  if(event.key==='Escape' && debugIssueModalOverlay.classList.contains('open')) closeDebugIssueModal();
-});
 
 /* ===================== アジェンダシート ===================== */
-const AGENDA_MODAL_STATE = Object.freeze({CLOSED:'CLOSED', EDITING:'EDITING'});
-let agendaModal = {state:AGENDA_MODAL_STATE.CLOSED, itemId:null};
-const agendaItemModalOverlay = document.getElementById('agendaItemModalOverlay');
-const agendaItemTitle = document.getElementById('agendaItemTitle');
-const agendaItemSummary = document.getElementById('agendaItemSummary');
-function findAgendaItem(id){ return state.agendaItems.find(item=>item.id===id) || null; }
 function makeAgendaItem(){
-  return {id:newId('a'), title:'新しい議題', summary:'', status:'open', openedDate:todayStr(), completedDate:''};
+  return {
+    id:newId('a'),
+    title:'新しい議題',
+    summary:'',
+    status:'open',
+    assignee:currentUser || ASSIGNEES[0],
+    openedDate:todayStr(),
+    completedDate:'',
+  };
+}
+function findAgendaItemById(id){
+  return state.agendaItems.find(item=>item.id===id) || null;
+}
+function setAgendaItemField(id, field, value){
+  const item = findAgendaItemById(id);
+  if(!item) return false;
+  if(item[field]===value) return false;
+  const previous=item[field];
+  item[field] = value;
+  if(field==='status' && previous!=='resolved' && value==='resolved'){
+    if(!item.completedDate) item.completedDate=todayStr();
+    recordCompletion('agenda',item);
+  }
+  markAgendaItemDirty(id);
+  return true;
 }
 function addAgendaItem(){
   const item = makeAgendaItem();
   state.agendaItems.push(item);
   markAgendaItemDirty(item.id);
-  commit();
+  renderAgendaSheet();
+  saveNow();
   requestAnimationFrame(()=>{
-    const input = document.querySelector('[data-agenda-item-id="'+item.id+'"] input[type=text]');
+    const input = document.querySelector('.drow[data-agenda-id="'+item.id+'"] input[type=text]');
     if(input){ input.focus(); input.select(); }
   });
 }
 function deleteAgendaItem(id){
-  if(!findAgendaItem(id)) return;
-  if(agendaModal.itemId===id) closeAgendaItemModal();
+  if(!findAgendaItemById(id)) return;
   markAgendaItemDeleted(id);
   state.agendaItems = state.agendaItems.filter(item=>item.id!==id);
-  discardPendingServerData();
-  render();
-  saveImmediately();
+  if(agendaModalItemId===id) closeAgendaModal();
+  renderAgendaSheet();
+  saveNow();
 }
-function renderAgendaItems(){
-  const wrap = document.getElementById('agendaItemRows');
-  wrap.innerHTML = '';
-  const items = state.agendaItems.slice().sort((a,b)=>{
-    const aCompleted = a.status==='resolved', bCompleted = b.status==='resolved';
-    if(aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+function bindAgendaTitleInput(input,id){bindSynchronizedTextInput(input,value=>setAgendaItemField(id,'title',value));}
+function renderAgendaSheet(){
+  const wrap = document.getElementById('agendaRows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  const sorted = state.agendaItems.slice().sort((a,b)=>{
+    const aCompleted = a.status==='resolved';
+    const bCompleted = b.status==='resolved';
+    if(aCompleted!==bCompleted) return aCompleted ? 1 : -1;
     return (b.openedDate || '').localeCompare(a.openedDate || '');
   });
-  if(!items.length){
+  if(sorted.length===0){
     const empty = document.createElement('div');
     empty.className='debug-empty';
     empty.textContent='議題はまだ登録されていません。「＋ 議題を追加」から記録できます。';
     wrap.appendChild(empty);
     return;
   }
-  items.forEach(item=>wrap.appendChild(buildAgendaItemRow(item)));
+  sorted.forEach(item=> wrap.appendChild(buildAgendaRow(item)));
 }
-function buildAgendaItemRow(item){
+function buildAgendaRow(item){
   const row = document.createElement('div');
-  row.className='debug-grid debug-issue-row';
-  row.dataset.agendaItemId=item.id;
-  row.title='右クリックで議題・要望の概要を表示・編集';
-  row.addEventListener('contextmenu', event=>{
-    event.preventDefault();
-    event.stopPropagation();
-    openAgendaItemModal(item.id);
+  row.className='drow';
+  row.dataset.agendaId=item.id;
+  row.title='右クリックで議題・要望の概要を表示';
+  row.addEventListener('contextmenu', (e)=>{
+    e.preventDefault();
+    openAgendaModal(item.id);
   });
-  const title = document.createElement('input');
-  title.type='text'; title.value=item.title; title.placeholder='議題・要望';
-  bindSynchronizedTextInput(title, value=>{ item.title=value; markAgendaItemDirty(item.id); });
-  row.appendChild(title);
-  const status = document.createElement('select');
-  status.setAttribute('aria-label','議題の対応状況');
-  AGENDA_STATUS_OPTIONS.forEach(({id,label})=>{
-    const option = document.createElement('option');
-    option.value=id; option.textContent=label; option.selected=id===item.status;
-    status.appendChild(option);
+
+  const titleInput = document.createElement('input');
+  titleInput.type='text';
+  titleInput.value=item.title || '新しい議題';
+  titleInput.placeholder='議題・要望';
+  bindAgendaTitleInput(titleInput, item.id);
+  row.appendChild(titleInput);
+
+  const statusSelect = document.createElement('select');
+  statusSelect.className='select-pill';
+  statusSelect.setAttribute('aria-label','対応状況');
+  DEBUG_STATUS_OPTIONS.forEach(option=>{
+    const el = document.createElement('option');
+    el.value=option.id;
+    el.textContent=option.label;
+    if(option.id===item.status) el.selected=true;
+    statusSelect.appendChild(el);
   });
-  status.addEventListener('change', ()=>{
-    item.status=status.value; markAgendaItemDirty(item.id); commit();
+  statusSelect.addEventListener('change', (e)=>{
+    if(setAgendaItemField(item.id, 'status', e.target.value)){
+      renderAgendaSheet();
+      saveNow();
+    }
   });
-  row.appendChild(status);
-  const opened = document.createElement('input');
-  opened.type='date'; opened.value=item.openedDate; opened.setAttribute('aria-label','議題の起票日');
-  opened.addEventListener('change', ()=>{ item.openedDate=opened.value || todayStr(); markAgendaItemDirty(item.id); commit(); });
-  row.appendChild(opened);
-  const completed = document.createElement('input');
-  completed.type='date'; completed.value=item.completedDate; completed.setAttribute('aria-label','議題の完了日');
-  completed.addEventListener('change', ()=>{ item.completedDate=completed.value; markAgendaItemDirty(item.id); scheduleSave(); });
-  row.appendChild(completed);
-  const remove = document.createElement('button');
-  remove.className='debug-delete'; remove.title='削除'; remove.textContent='×';
-  remove.addEventListener('contextmenu', event=>event.stopPropagation());
-  remove.addEventListener('click', ()=>deleteAgendaItem(item.id));
-  row.appendChild(remove);
+  row.appendChild(statusSelect);
+
+  row.appendChild(buildResponderSelect(item,value=>{
+    setAgendaItemField(item.id,'assignee',value);saveNow();
+  }));
+
+  const openedInput = document.createElement('input');
+  openedInput.type='date';
+  openedInput.value=item.openedDate || todayStr();
+  openedInput.addEventListener('change', (e)=>{
+    if(setAgendaItemField(item.id, 'openedDate', e.target.value || todayStr())){
+      renderAgendaSheet();
+      saveNow();
+    }
+  });
+  row.appendChild(openedInput);
+
+  const completedInput = document.createElement('input');
+  completedInput.type='date';
+  completedInput.value=item.completedDate || '';
+  completedInput.addEventListener('change', (e)=>{
+    if(setAgendaItemField(item.id, 'completedDate', e.target.value || '')) saveNow();
+  });
+  row.appendChild(completedInput);
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className='debug-delete';
+  deleteBtn.title='削除';
+  deleteBtn.textContent='×';
+  deleteBtn.addEventListener('contextmenu', (e)=> e.stopPropagation());
+  deleteBtn.addEventListener('click', ()=> deleteAgendaItem(item.id));
+  row.appendChild(deleteBtn);
   return row;
 }
-function openAgendaItemModal(id){
-  if(textEditing.element) finishTextEditing(textEditing.element);
-  const item = findAgendaItem(id);
+
+const agendaModalOverlay = document.getElementById('agendaModalOverlay');
+const agendaModalTitle = document.getElementById('agendaModalTitle');
+const agendaModalSummary = document.getElementById('agendaModalSummary');
+let agendaModalItemId = null;
+function openAgendaModal(id){
+  const item = findAgendaItemById(id);
   if(!item) return;
-  agendaModal = {state:AGENDA_MODAL_STATE.EDITING, itemId:id};
-  agendaItemTitle.value=item.title;
-  agendaItemSummary.value=item.summary;
-  agendaItemModalOverlay.classList.add('open');
-  setTimeout(()=>agendaItemSummary.focus(),0);
+  agendaModalItemId = id;
+  agendaModalTitle.value = item.title || '新しい議題';
+  agendaModalSummary.value = item.summary || '';
+  agendaModalOverlay.classList.add('open');
+  setTimeout(()=>{ agendaModalSummary.focus(); }, 0);
 }
-function closeAgendaItemModal(){
-  if(agendaItemModalOverlay.contains(document.activeElement)) document.activeElement.blur();
-  agendaItemModalOverlay.classList.remove('open');
-  agendaModal = {state:AGENDA_MODAL_STATE.CLOSED, itemId:null};
+function closeAgendaModal(){
+  agendaModalOverlay.classList.remove('open');
+  agendaModalItemId = null;
 }
-function saveAgendaItemModal(){
-  if(agendaModal.state !== AGENDA_MODAL_STATE.EDITING) return;
-  const item = findAgendaItem(agendaModal.itemId);
-  if(!item){ closeAgendaItemModal(); return; }
-  item.title=agendaItemTitle.value.trim() || '新しい議題';
-  item.summary=agendaItemSummary.value;
-  markAgendaItemDirty(item.id);
-  discardPendingServerData();
-  closeAgendaItemModal();
-  render();
-  saveImmediately();
-}
-document.getElementById('agendaTabBtn').addEventListener('click', ()=>changeWorkspaceView(WORKSPACE_VIEW.AGENDA));
+document.getElementById('agendaModalClose').addEventListener('click', closeAgendaModal);
+agendaModalOverlay.addEventListener('click', (e)=>{ if(e.target===agendaModalOverlay) closeAgendaModal(); });
+document.getElementById('agendaModalSave').addEventListener('click', ()=>{
+  if(!agendaModalItemId) return;
+  const id = agendaModalItemId;
+  setAgendaItemField(id, 'title', agendaModalTitle.value.trim() || '新しい議題');
+  setAgendaItemField(id, 'summary', agendaModalSummary.value);
+  closeAgendaModal();
+  renderAgendaSheet();
+  saveNow();
+});
+document.getElementById('agendaModalDelete').addEventListener('click', ()=>{
+  if(agendaModalItemId) deleteAgendaItem(agendaModalItemId);
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape' && agendaModalOverlay.classList.contains('open')) closeAgendaModal();
+});
 document.getElementById('addAgendaItemBtn').addEventListener('click', addAgendaItem);
-document.getElementById('agendaItemModalClose').addEventListener('click', closeAgendaItemModal);
-document.getElementById('agendaItemSave').addEventListener('click', saveAgendaItemModal);
-document.getElementById('agendaItemDelete').addEventListener('click', ()=>{
-  if(agendaModal.state !== AGENDA_MODAL_STATE.EDITING) return;
-  deleteAgendaItem(agendaModal.itemId);
-});
-agendaItemModalOverlay.addEventListener('click', event=>{
-  if(event.target===agendaItemModalOverlay) closeAgendaItemModal();
-});
-document.addEventListener('keydown', event=>{
-  if(event.key==='Escape' && agendaItemModalOverlay.classList.contains('open')) closeAgendaItemModal();
-});
 
 /* ===================== 最初に担当者を選ぶゲート ===================== */
 const userGateOverlay = document.getElementById('userGateOverlay');
 const userGateButtons = document.getElementById('userGateButtons');
-const CURRENT_USER_STORAGE_KEY = 'aliusTerraTaskBoard.currentUser';
-const savedUser = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
-if(savedUser && ASSIGNEES.includes(savedUser)){
-  currentUser = savedUser;
-  userGateOverlay.classList.remove('open');
-}
 ASSIGNEES.forEach(a=>{
   const b = document.createElement('button');
   b.className='btn btn-ghost user-gate-btn';
   b.textContent = a;
   b.addEventListener('click', ()=>{
     currentUser = a;
-    localStorage.setItem(CURRENT_USER_STORAGE_KEY, a);
+    localStorage.setItem('aliusTerraTaskBoard.currentUser', a);
     userGateOverlay.classList.remove('open');
   });
   userGateButtons.appendChild(b);
 });
+if(currentUser) userGateOverlay.classList.remove('open');
 
 /* ===================== リスト表示/非表示 ===================== */
-const boardEl = document.getElementById('boardEl');
+const boardEl = document.getElementById('taskContent');
 document.getElementById('collapseBtn').addEventListener('click', ()=>{
   boardEl.classList.add('list-collapsed');
 });
@@ -3126,10 +3406,18 @@ document.getElementById('reopenListBtn').addEventListener('click', ()=>{
 });
 
 /* ===================== ツールバー ===================== */
-document.getElementById('addRootBtn').addEventListener('click', addRootTask);
+document.getElementById('addRootBtn').addEventListener('click',()=>{
+  taskPanel.open();
+  addRootTask();
+});
 document.getElementById('jumpTodayBtn').addEventListener('click', ()=>{
   render();
   scrollToToday();
+});
+document.getElementById('backToTop').addEventListener('click',()=>{
+  document.getElementById('pageHeader').focus({preventScroll:true});
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  window.scrollTo({top:0,behavior:reduceMotion ? 'auto' : 'smooth'});
 });
 
 function scrollToToday(){
@@ -3142,6 +3430,22 @@ function scrollToToday(){
 }
 
 /* ===================== サーバーの新形式データを、いつものネスト構造に組み立て直す ===================== */
+function buildResponderSelect(item,onChange){
+  const select=document.createElement('select');
+  select.className='select-pill';
+  select.setAttribute('aria-label','対応者');
+  ['',...ASSIGNEES].forEach(name=>{
+    const option=document.createElement('option');
+    option.value=name;option.textContent=name || '未設定';option.selected=(item.assignee || '')===name;
+    select.appendChild(option);
+  });
+  select.addEventListener('change',e=>onChange(e.target.value));
+  return select;
+}
+function normalizeSheetStatus(value){
+  const legacy={'未対応':'open','調査中':'investigating','対応中':'working','確認待ち':'verifying','解決済み':'resolved'};
+  return DEBUG_STATUS_OPTIONS.some(option=>option.id===value) ? value : legacy[value] || 'open';
+}
 function applyServerData(data){
   const flatTasks = (data && data.tasks && typeof data.tasks==='object') ? data.tasks : {};
   const rootOrder = (data && Array.isArray(data.rootOrder)) ? data.rootOrder : [];
@@ -3154,6 +3458,8 @@ function applyServerData(data){
       id: flat.id || id,
       name: typeof flat.name==='string' ? flat.name : '新しいタスク',
       status: typeof flat.status==='number' ? flat.status : 0,
+      repo:typeof flat.repo==='string' ? flat.repo : '',
+      priority:normalizePriority(flat.priority),
       assignee: flat.assignee || ASSIGNEES[0],
       start: flat.start || todayStr(),
       end: flat.end || flat.start || todayStr(),
@@ -3170,35 +3476,40 @@ function applyServerData(data){
 
   const flatHistory = (data && data.history && typeof data.history==='object') ? data.history : {};
   state.history = Object.keys(flatHistory).map(id=> flatHistory[id]).filter(Boolean);
-  registeredHistoryNotifications.clear();
-  const notifications = data && data.historyNotifications && typeof data.historyNotifications==='object' ? data.historyNotifications : {};
-  Object.entries(notifications).forEach(([id,notification])=>{
-    if(notification && notification.entry && notification.entry.id===id) registeredHistoryNotifications.set(id, notification);
-  });
+  legacyHistoryNotifications=data?.historyNotifications || {};
 
   state.milestones = (data && data.milestones && typeof data.milestones==='object') ? data.milestones : {};
 
   const flatDebugIssues = (data && data.debugIssues && typeof data.debugIssues==='object') ? data.debugIssues : {};
   state.debugIssues = Object.keys(flatDebugIssues).map(id=>{
-    const issue = flatDebugIssues[id];
-    if(!issue || typeof issue!=='object') return null;
+    const raw = flatDebugIssues[id];
+    if(!raw || typeof raw!=='object') return null;
+    const status=normalizeSheetStatus(raw.status);
     return {
-      id: issue.id || id,
-      title: typeof issue.title==='string' ? issue.title : '新しい問題',
-      summary: typeof issue.summary==='string' ? issue.summary : '',
-      status: DEBUG_STATUS_OPTIONS.includes(issue.status) ? issue.status : DEBUG_STATUS_OPTIONS[0],
-      occurredDate: issue.occurredDate || todayStr(),
-      resolvedDate: issue.resolvedDate || '',
+      id:raw.id || id,
+      title:typeof raw.title==='string' ? raw.title : '新しい問題',
+      summary:typeof raw.summary==='string' ? raw.summary : '',
+      status,
+      assignee:typeof raw.assignee==='string' ? raw.assignee : '',
+      occurredDate:raw.occurredDate || todayStr(),
+      resolvedDate:raw.resolvedDate || '',
     };
   }).filter(Boolean);
 
-  const flatAgenda = data && data.agendaItems && typeof data.agendaItems==='object' ? data.agendaItems : {};
-  state.agendaItems = Object.entries(flatAgenda).map(([id,item])=>{
-    if(!item || typeof item!=='object') return null;
-    return {id:item.id || id, title:typeof item.title==='string' ? item.title : '新しい議題',
-      summary:typeof item.summary==='string' ? item.summary : '',
-      status:AGENDA_STATUS_OPTIONS.some(option=>option.id===item.status) ? item.status : 'open',
-      openedDate:item.openedDate || todayStr(), completedDate:item.completedDate || ''};
+  const flatAgendaItems = (data && data.agendaItems && typeof data.agendaItems==='object') ? data.agendaItems : {};
+  state.agendaItems = Object.keys(flatAgendaItems).map(id=>{
+    const raw = flatAgendaItems[id];
+    if(!raw || typeof raw!=='object') return null;
+    const status=normalizeSheetStatus(raw.status);
+    return {
+      id:raw.id || id,
+      title:typeof raw.title==='string' ? raw.title : '新しい議題',
+      summary:typeof raw.summary==='string' ? raw.summary : '',
+      status,
+      assignee:typeof raw.assignee==='string' ? raw.assignee : '',
+      openedDate:raw.openedDate || todayStr(),
+      completedDate:raw.completedDate || '',
+    };
   }).filter(Boolean);
 }
 function isTypingActive(){
@@ -3206,40 +3517,13 @@ function isTypingActive(){
   if(!el) return false;
   return (el.tagName==='INPUT' || el.tagName==='TEXTAREA') && document.body.contains(el);
 }
-function shouldDeferServerData(){
-  return isSynchronizedTextEditing() || isTypingActive() ||
-    [...historyRegistrationOperations.values()].some(operation=>operation.state === HISTORY_REGISTRATION_STATE.REGISTERING);
-}
-
-// モーダル等の非同期入力中にも受信適用を待ち、フォーカスが外れた時点で最新値を反映する。
-document.addEventListener('focusout', ()=>{
-  requestAnimationFrame(()=>{
-    if(!shouldDeferServerData()) applyPendingServerData();
-  });
-});
 
 /* ===================== 初期描画／Firebase同期 ===================== */
-let didInitialScroll = false;
-let didFirstRender = false;
-let pendingRenderFromServer = false;
-
-function firstRenderOnce(){
-  if(didFirstRender) return;
-  didFirstRender = true;
-  render();
-  if(!didInitialScroll){
-    didInitialScroll = true;
-    scrollToToday();
-  }
-}
-
-// Realtime Database同期は Firebase Authentication の onAuthStateChanged から開始する。
-// 未ログイン状態ではタスクデータの読み込み・書き込みを開始しない。
-initializeHistoryPanel();
-try{
-  const savedView = localStorage.getItem('aliusTerraTaskBoard.workspaceView');
-  if(Object.values(WORKSPACE_VIEW).includes(savedView)) currentWorkspaceView=savedView;
-}catch{}
+let didInitialScroll=false,didFirstRender=false,pendingRenderFromServer=false;
+function firstRenderOnce(){if(didFirstRender)return;didFirstRender=true;render();if(!didInitialScroll){didInitialScroll=true;scrollToToday();}}
+function shouldDeferServerData(){return isSynchronizedTextEditing() || isTypingActive() || hasUnsavedChanges();}
+document.addEventListener('focusout',()=>requestAnimationFrame(()=>{if(!shouldDeferServerData())applyPendingServerData();}));
+setActiveToolTab(activeToolTab,false);
 render();
 </script>
 </body>
