@@ -1,14 +1,18 @@
 import { DurableObject } from 'cloudflare:workers';
 import { FirebaseReader } from './firebase.mjs';
 import { HistoryProcessor, sendDiscord, discordWebhookUrl } from './notifier.mjs';
+import { QueueProcessor } from './queue.mjs';
 
 export class HistoryLog extends DurableObject {
   constructor(ctx, env){
     super(ctx, env);
     const reader = new FirebaseReader(env);
+    this.reader = reader;
+    this.storage = ctx.storage;
     this.processor = new HistoryProcessor(ctx.storage,
       ()=>reader.notifications(), notification=>sendDiscord(env, notification));
     this.env = env;
+    this.running = Promise.resolve();
   }
 
   async fetch(){
@@ -18,7 +22,16 @@ export class HistoryLog extends DurableObject {
     }
     // 再試行待ちでも設定形式を確認し、秘密を出さず設定エラーを診断できる。
     discordWebhookUrl(this.env.DISCORD_WEBHOOK_URL);
-    return Response.json(await this.processor.run());
+    const operation = this.running.then(async()=>{
+      // 旧ページの登録を先に確定し、新しいキューとの重複送信を避ける。
+      const legacy = await this.processor.run();
+      const queue = new QueueProcessor({storage:this.storage,firebase:this.reader,env:this.env});
+      await queue.publishLegacyReceipts(await this.reader.notifications());
+      await queue.registerAutomaticCompletions();
+      return {legacy,queue:await queue.run()};
+    });
+    this.running = operation.catch(()=>{});
+    return Response.json(await operation);
   }
 }
 

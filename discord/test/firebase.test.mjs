@@ -62,3 +62,20 @@ test('default fetch keeps the Workers global receiver for OAuth and database req
     globalThis.fetch=originalFetch;
   }
 });
+
+test('new notification requests remain under the existing board and only acknowledge automatic history flags', async()=>{
+  const env={FIREBASE_PROJECT_ID:'aliusterratasks',FIREBASE_BOARD_PATH:'aliusTerraBoard',
+    FIREBASE_DATABASE_URL:'https://aliusterratasks-default-rtdb.asia-southeast1.firebasedatabase.app'};
+  const calls=[];
+  const reader=new FirebaseReader(env,async(url,init)=>{calls.push({url,init});return Response.json({});});
+  reader.accessToken=async()=> 'fake-token';
+  await reader.request('historyDiscordReceipts/h1_hash','PUT',{status:'sent'});
+  await reader.request('history/auto_task_t1','PATCH',{autoRegister:false});
+  assert.equal(calls[0].url.pathname,'/aliusTerraBoard/historyDiscordReceipts/h1_hash.json');
+  assert.equal(calls[1].url.pathname,'/aliusTerraBoard/history/auto_task_t1.json');
+  assert.equal(calls[1].init.redirect,'manual');
+  for(const path of ['tasks','../other','history/h1']) await assert.rejects(reader.request(path,'PUT',{}),/Invalid Firebase notification/);
+  await assert.rejects(reader.request('history/h1','PATCH',{autoRegister:false,content:'changed'}),/Invalid Firebase notification/);
+  env.FIREBASE_BOARD_PATH='rover'; await assert.rejects(reader.request('history'),/Invalid Firebase board/);
+  assert.equal(calls.length,2);
+});

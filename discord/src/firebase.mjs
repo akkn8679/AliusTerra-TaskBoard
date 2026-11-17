@@ -50,22 +50,38 @@ export class FirebaseReader {
     return this.token;
   }
 
-  async notifications(){
+  async request(path, method = 'GET', body, query = {}){
+    const notificationRead = path === 'historyNotifications' && method === 'GET';
+    const queuePath = /^(historyDiscordQueue|historyDiscordReceipts)(\/[A-Za-z0-9_-]{1,200})?$/.test(path);
+    const historyRead = path === 'history' && method === 'GET';
+    const completionAck = /^history\/[A-Za-z0-9_-]{1,100}$/.test(path) && method === 'PATCH' &&
+      body && Object.keys(body).length === 1 && body.autoRegister === false;
+    if(!notificationRead && !queuePath && !historyRead && !completionAck) throw new Error('Invalid Firebase notification path');
+    if(queuePath && !['GET','PUT','PATCH'].includes(method)) throw new Error('Invalid Firebase notification method');
     const base = new URL(this.env.FIREBASE_DATABASE_URL);
-    if(base.protocol !== 'https:' || !base.hostname.endsWith('.firebasedatabase.app') || base.username || base.password){
+    if(this.env.FIREBASE_PROJECT_ID !== 'aliusterratasks' || base.protocol !== 'https:' ||
+      base.hostname !== 'aliusterratasks-default-rtdb.asia-southeast1.firebasedatabase.app' ||
+      base.port || base.username || base.password){
       throw new Error('Invalid Firebase database URL');
     }
-    const path = this.env.FIREBASE_BOARD_PATH;
-    if(!/^[A-Za-z0-9_-]+$/.test(path)) throw new Error('Invalid Firebase board path');
-    const url = new URL('/' + path + '/historyNotifications.json', base);
+    const boardPath = this.env.FIREBASE_BOARD_PATH;
+    if(boardPath !== 'aliusTerraBoard') throw new Error('Invalid Firebase board path');
+    const url = new URL('/' + boardPath + '/' + path + '.json', base);
+    for(const [name,value] of Object.entries(query)) url.searchParams.set(name,String(value));
     const response = await this.fetcher(url, {
-      headers:{Authorization:'Bearer ' + await this.accessToken()}, signal:AbortSignal.timeout(10000),
+      method, headers:{Authorization:'Bearer ' + await this.accessToken(), 'Content-Type':'application/json'},
+      body:body === undefined ? undefined : JSON.stringify(body),
+      signal:AbortSignal.timeout(10000), redirect:'manual',
     });
     if(!response.ok){
       if(response.status === 401) this.expiresAt = 0;
-      throw new Error('Firebase history read failed: HTTP ' + response.status);
+      throw new Error('Firebase ' + method + ' ' + path.split('/')[0] + ' failed: HTTP ' + response.status);
     }
-    const records = await response.json();
+    return response.json();
+  }
+
+  async notifications(){
+    const records = await this.request('historyNotifications');
     if(records === null) return {};
     if(typeof records !== 'object' || Array.isArray(records)) throw new Error('Invalid Firebase history response');
     return records;

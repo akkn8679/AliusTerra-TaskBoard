@@ -1,0 +1,1 @@
+window.ALIUS_TERRA_TASK_CONFIG={title:'Alius-Terra 開発管理ツール',assignees:['きむち','しぶ','いつ','いちご'],boardPath:'aliusTerraBoard',workBranches:['dev/codex-work'],workBranchesCheckedAt:'2026-11-18',discordNotificationsEnabled:true,discordChannelName:'開発管理ログ'};
