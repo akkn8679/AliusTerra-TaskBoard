@@ -24,7 +24,7 @@
 1. Discordのアリウステラサーバーで**管理ログチャンネル**を開き、チャンネルの設定 → 連携サービス → ウェブフックから専用Webhookを作成します。表示される投稿先のサーバー・チャンネルを確認します。Webhook URLが投稿先を指定するのでサーバーID・チャンネルIDの公開設定は不要です。
 2. Google Cloudの `aliusterratasks` プロジェクトで通知用サービスアカウントを用意します。従来のViewerだけでは、新方式の配信結果保存と完了履歴の受付確認を書き込めません。配信結果・通知キューの書き込み、および履歴の `autoRegister` の解除ができる認可を確認してください。Workerのコードは既存ボード内の通知関連パス以外へ書き込みません。既存のAdmin SDKアカウントは使い回しません。
 
-   現行環境では専用アカウントに既存の `roles/firebasedatabase.viewer` と、`firebasedatabase.instances.update` のみを含むカスタムロール `projects/aliusterratasks/roles/aliusTerraDiscordDeliveryWriter` を付与しています。データベースの作成・削除権限は付与しません。IAMのデータ更新権限は通知パスだけに限定されるものではないため、Worker側でも書き込み先を明示的に制限しています。
+   現行環境では専用アカウントに既存の `roles/firebasedatabase.viewer` と、カスタムロール `projects/aliusterratasks/roles/aliusTerraDiscordDeliveryWriter` を付与しています。追加する更新権限は `firebasedatabase.instances.update` です。専用ロールには既存Viewerに含まれる読み取り権限（`firebase.clients.get/list`、`firebase.projects.get`、`firebasedatabase.instances.get/list`、`resourcemanager.projects.get`）も含めています。データベースの作成・削除権限は付与しません。IAMのデータ更新権限は通知パスだけに限定されるものではないため、Worker側でも書き込み先を明示的に制限しています。
 3. この専用アカウントのJSON鍵を取得し、Cloudflareの `FIREBASE_SERVICE_ACCOUNT` SecretとしてJSON全文を保存します。鍵は公開リポジトリの外で扱います。
 4. `discord/` で `npm ci` を実行し、`npx wrangler login` でCloudflareの公開用ログインを済ませます。
 5. `npm run check` → `npm run deploy`。Worker名は `aliusterra-discord-history`。SQLite Durable Objectと毎分Cronは設定ファイルから作成されます。`workers.dev`とプレビューURLは無効です。
