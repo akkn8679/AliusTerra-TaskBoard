@@ -75,7 +75,11 @@ export class FirebaseReader {
     });
     if(!response.ok){
       if(response.status === 401) this.expiresAt = 0;
-      throw new Error('Firebase ' + method + ' ' + path.split('/')[0] + ' failed: HTTP ' + response.status);
+      const failure=await response.json().catch(()=>({}));
+      const reason=typeof failure.error==='string' ? failure.error.toLowerCase() : '';
+      const classification=reason.includes('permission denied') ? 'PERMISSION_DENIED'
+        : reason.includes('expired') ? 'TOKEN_EXPIRED' : reason.includes('auth token') ? 'TOKEN_INVALID' : 'REQUEST_FAILED';
+      throw new Error('Firebase ' + method + ' ' + path.split('/')[0] + ' failed: HTTP ' + response.status + ' ' + classification);
     }
     return response.json();
   }

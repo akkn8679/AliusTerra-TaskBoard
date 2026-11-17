@@ -79,3 +79,15 @@ test('new notification requests remain under the existing board and only acknowl
   env.FIREBASE_BOARD_PATH='rover'; await assert.rejects(reader.request('history'),/Invalid Firebase board/);
   assert.equal(calls.length,2);
 });
+
+test('authentication failures invalidate cached tokens and log only a safe error classification',async()=>{
+  const env={FIREBASE_PROJECT_ID:'aliusterratasks',FIREBASE_BOARD_PATH:'aliusTerraBoard',
+    FIREBASE_DATABASE_URL:'https://aliusterratasks-default-rtdb.asia-southeast1.firebasedatabase.app'};
+  for(const [error,code] of [['Permission denied','PERMISSION_DENIED'],['Auth token is expired','TOKEN_EXPIRED'],['Invalid auth token','TOKEN_INVALID'],['private diagnostic text','REQUEST_FAILED']]){
+    const reader=new FirebaseReader(env,async()=>Response.json({error},{status:401}));
+    reader.accessToken=async()=> 'fake-token';reader.expiresAt=1234;
+    await assert.rejects(reader.request('historyDiscordReceipts/h1_hash','PUT',{status:'sent'}),
+      exception=>exception.message==='Firebase PUT historyDiscordReceipts failed: HTTP 401 '+code);
+    assert.equal(reader.expiresAt,0);
+  }
+});
